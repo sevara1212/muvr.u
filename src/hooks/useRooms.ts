@@ -15,7 +15,7 @@ import {
   db
 } from '@/lib/firebase';
 import { Room, User, SportType } from '@/types';
-import { collection, addDoc, Timestamp } from 'firebase/firestore';
+import { collection, addDoc, Timestamp, DocumentData } from 'firebase/firestore';
 
 interface RoomsState {
   rooms: Room[];
@@ -49,35 +49,54 @@ export function useRooms(currentUser: User | null) {
     }
   }, [currentUser]);
 
+  // Helper function to batch fetch host data
+  const fetchHostsData = async (hostIds: string[]): Promise<Record<string, User>> => {
+    // Remove duplicates
+    const uniqueHostIds = [...new Set(hostIds)];
+    const hostsMap: Record<string, User> = {};
+    
+    // Batch fetch in groups of 10 (Firestore limit for 'in' queries)
+    for (let i = 0; i < uniqueHostIds.length; i += 10) {
+      const batch = uniqueHostIds.slice(i, i + 10);
+      try {
+        const q = query(usersCollection, where('__name__', 'in', batch));
+        const hostSnaps = await getDocs(q);
+        
+        hostSnaps.forEach(doc => {
+          hostsMap[doc.id] = { id: doc.id, ...doc.data() } as User;
+        });
+      } catch (error) {
+        console.error('Error batch fetching hosts:', error);
+      }
+    }
+    
+    return hostsMap;
+  };
+
   // Fetch all rooms
   const fetchAllRooms = async () => {
     setRoomsState(prev => ({ ...prev, loading: true, error: null }));
     
     try {
       const roomsSnapshot = await getDocs(roomsCollection);
-      const roomsList: Room[] = [];
+      const roomsData: DocumentData[] = [];
+      const hostIds: string[] = [];
       
-      for (const roomDoc of roomsSnapshot.docs) {
-        const roomData = roomDoc.data();
-        
-        // Get host data
-        let host: User | undefined;
-        try {
-          const hostRef = doc(usersCollection, roomData.hostId);
-          const hostSnap = await getDoc(hostRef);
-          if (hostSnap.exists()) {
-            host = { id: hostSnap.id, ...hostSnap.data() } as User;
-          }
-        } catch (error) {
-          console.error(`Error fetching host for room ${roomDoc.id}:`, error);
-        }
-        
-        roomsList.push({
-          id: roomDoc.id,
-          ...roomData,
-          host
-        } as Room);
-      }
+      // First, collect all room data and host IDs
+      roomsSnapshot.forEach(doc => {
+        const data = doc.data();
+        roomsData.push({ id: doc.id, ...data });
+        if (data.hostId) hostIds.push(data.hostId);
+      });
+      
+      // Then batch fetch all hosts data
+      const hostsMap = await fetchHostsData(hostIds);
+      
+      // Finally, combine room data with host data
+      const roomsList = roomsData.map(room => ({
+        ...room,
+        host: hostsMap[room.hostId]
+      })) as Room[];
       
       setRoomsState(prev => ({
         ...prev,
@@ -103,29 +122,24 @@ export function useRooms(currentUser: User | null) {
     try {
       const q = query(roomsCollection, where("sportType", "==", sportType));
       const roomsSnapshot = await getDocs(q);
-      const roomsList: Room[] = [];
+      const roomsData: DocumentData[] = [];
+      const hostIds: string[] = [];
       
-      for (const roomDoc of roomsSnapshot.docs) {
-        const roomData = roomDoc.data();
-        
-        // Get host data
-        let host: User | undefined;
-        try {
-          const hostRef = doc(usersCollection, roomData.hostId);
-          const hostSnap = await getDoc(hostRef);
-          if (hostSnap.exists()) {
-            host = { id: hostSnap.id, ...hostSnap.data() } as User;
-          }
-        } catch (error) {
-          console.error(`Error fetching host for room ${roomDoc.id}:`, error);
-        }
-        
-        roomsList.push({
-          id: roomDoc.id,
-          ...roomData,
-          host
-        } as Room);
-      }
+      // First, collect all room data and host IDs
+      roomsSnapshot.forEach(doc => {
+        const data = doc.data();
+        roomsData.push({ id: doc.id, ...data });
+        if (data.hostId) hostIds.push(data.hostId);
+      });
+      
+      // Then batch fetch all hosts data
+      const hostsMap = await fetchHostsData(hostIds);
+      
+      // Finally, combine room data with host data
+      const roomsList = roomsData.map(room => ({
+        ...room,
+        host: hostsMap[room.hostId]
+      })) as Room[];
       
       setRoomsState(prev => ({
         ...prev,
@@ -150,29 +164,24 @@ export function useRooms(currentUser: User | null) {
     try {
       const q = query(roomsCollection, where("participants", "array-contains", userId));
       const roomsSnapshot = await getDocs(q);
-      const userRoomsList: Room[] = [];
+      const roomsData: DocumentData[] = [];
+      const hostIds: string[] = [];
       
-      for (const roomDoc of roomsSnapshot.docs) {
-        const roomData = roomDoc.data();
-        
-        // Get host data
-        let host: User | undefined;
-        try {
-          const hostRef = doc(usersCollection, roomData.hostId);
-          const hostSnap = await getDoc(hostRef);
-          if (hostSnap.exists()) {
-            host = { id: hostSnap.id, ...hostSnap.data() } as User;
-          }
-        } catch (error) {
-          console.error(`Error fetching host for room ${roomDoc.id}:`, error);
-        }
-        
-        userRoomsList.push({
-          id: roomDoc.id,
-          ...roomData,
-          host
-        } as Room);
-      }
+      // First, collect all room data and host IDs
+      roomsSnapshot.forEach(doc => {
+        const data = doc.data();
+        roomsData.push({ id: doc.id, ...data });
+        if (data.hostId) hostIds.push(data.hostId);
+      });
+      
+      // Then batch fetch all hosts data
+      const hostsMap = await fetchHostsData(hostIds);
+      
+      // Finally, combine room data with host data
+      const userRoomsList = roomsData.map(room => ({
+        ...room,
+        host: hostsMap[room.hostId]
+      })) as Room[];
       
       setRoomsState(prev => ({
         ...prev,
@@ -205,14 +214,12 @@ export function useRooms(currentUser: User | null) {
       
       // Get host data
       let host: User | undefined;
-      try {
+      if (roomData.hostId) {
         const hostRef = doc(usersCollection, roomData.hostId);
         const hostSnap = await getDoc(hostRef);
         if (hostSnap.exists()) {
           host = { id: hostSnap.id, ...hostSnap.data() } as User;
         }
-      } catch (error) {
-        console.error(`Error fetching host for room ${roomId}:`, error);
       }
       
       return {
@@ -251,7 +258,7 @@ export function useRooms(currentUser: User | null) {
         joinedRooms: arrayUnion(roomId)
       });
       
-      // Refresh rooms
+      // Refresh rooms list
       fetchAllRooms();
       fetchUserRooms(currentUser.id);
       
@@ -270,23 +277,7 @@ export function useRooms(currentUser: User | null) {
     
     try {
       const roomRef = doc(roomsCollection, roomId);
-      const roomSnap = await getDoc(roomRef);
-      
-      if (!roomSnap.exists()) {
-        throw new Error('Room not found');
-      }
-      
-      const roomData = roomSnap.data();
-      
-      // Check if room is full
-      if (roomData.participants.length >= roomData.maxParticipants) {
-        throw new Error('Room is full');
-      }
-      
-      // Check if user is already in the room
-      if (roomData.participants.includes(currentUser.id)) {
-        throw new Error('User is already in this room');
-      }
+      const userRef = doc(usersCollection, currentUser.id);
       
       // Add user to room participants
       await updateDoc(roomRef, {
@@ -294,13 +285,11 @@ export function useRooms(currentUser: User | null) {
       });
       
       // Add room to user's joinedRooms
-      const userRef = doc(usersCollection, currentUser.id);
       await updateDoc(userRef, {
         joinedRooms: arrayUnion(roomId)
       });
       
       // Refresh rooms
-      fetchAllRooms();
       fetchUserRooms(currentUser.id);
       
       return true;
@@ -318,23 +307,7 @@ export function useRooms(currentUser: User | null) {
     
     try {
       const roomRef = doc(roomsCollection, roomId);
-      const roomSnap = await getDoc(roomRef);
-      
-      if (!roomSnap.exists()) {
-        throw new Error('Room not found');
-      }
-      
-      const roomData = roomSnap.data();
-      
-      // Check if user is the host
-      if (roomData.hostId === currentUser.id) {
-        throw new Error('Host cannot leave their own room');
-      }
-      
-      // Check if user is in the room
-      if (!roomData.participants.includes(currentUser.id)) {
-        throw new Error('User is not in this room');
-      }
+      const userRef = doc(usersCollection, currentUser.id);
       
       // Remove user from room participants
       await updateDoc(roomRef, {
@@ -342,13 +315,11 @@ export function useRooms(currentUser: User | null) {
       });
       
       // Remove room from user's joinedRooms
-      const userRef = doc(usersCollection, currentUser.id);
       await updateDoc(userRef, {
         joinedRooms: arrayRemove(roomId)
       });
       
       // Refresh rooms
-      fetchAllRooms();
       fetchUserRooms(currentUser.id);
       
       return true;

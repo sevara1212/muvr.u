@@ -10,9 +10,35 @@ import {
   query, 
   where, 
   getDocs,
-  serverTimestamp
+  serverTimestamp,
+  db
 } from "@/lib/firebase";
 import { FirebaseRoom, Room, User } from "@/types";
+import { DocumentData } from "firebase/firestore";
+
+// Helper function to batch fetch host data
+const fetchHostsData = async (hostIds: string[]): Promise<Record<string, User>> => {
+  // Remove duplicates
+  const uniqueHostIds = [...new Set(hostIds)];
+  const hostsMap: Record<string, User> = {};
+  
+  // Batch fetch in groups of 10 (Firestore limit for 'in' queries)
+  for (let i = 0; i < uniqueHostIds.length; i += 10) {
+    const batch = uniqueHostIds.slice(i, i + 10);
+    try {
+      const q = query(usersCollection, where('__name__', 'in', batch));
+      const hostSnaps = await getDocs(q);
+      
+      hostSnaps.forEach(doc => {
+        hostsMap[doc.id] = { id: doc.id, ...doc.data() } as User;
+      });
+    } catch (error) {
+      console.error('Error batch fetching hosts:', error);
+    }
+  }
+  
+  return hostsMap;
+};
 
 // Create a new room
 export const createRoom = async (roomData: Omit<Room, 'id' | 'participants' | 'createdAt'>, userId: string): Promise<string> => {
@@ -58,12 +84,14 @@ export const getRoomById = async (roomId: string): Promise<Room | null> => {
     const roomData = roomDoc.data() as FirebaseRoom;
     
     // Get host user data
-    const hostRef = doc(usersCollection, roomData.hostId);
-    const hostDoc = await getDoc(hostRef);
-    
     let host: User | undefined;
-    if (hostDoc.exists()) {
-      host = { id: hostDoc.id, ...hostDoc.data() } as User;
+    if (roomData.hostId) {
+      const hostRef = doc(usersCollection, roomData.hostId);
+      const hostDoc = await getDoc(hostRef);
+      
+      if (hostDoc.exists()) {
+        host = { id: hostDoc.id, ...hostDoc.data() } as User;
+      }
     }
     
     // Return room with ID and host data
@@ -82,32 +110,24 @@ export const getRoomById = async (roomId: string): Promise<Room | null> => {
 export const getAllRooms = async (): Promise<Room[]> => {
   try {
     const querySnapshot = await getDocs(roomsCollection);
-    const rooms: Room[] = [];
+    const roomsData: DocumentData[] = [];
+    const hostIds: string[] = [];
     
-    for (const roomDoc of querySnapshot.docs) {
-      const roomData = roomDoc.data() as FirebaseRoom;
-      
-      // Get host user data
-      let host: User | undefined;
-      try {
-        const hostRef = doc(usersCollection, roomData.hostId);
-        const hostDoc = await getDoc(hostRef);
-        
-        if (hostDoc.exists()) {
-          host = { id: hostDoc.id, ...hostDoc.data() } as User;
-        }
-      } catch (hostError) {
-        console.error(`Error fetching host for room ${roomDoc.id}:`, hostError);
-      }
-      
-      rooms.push({
-        id: roomDoc.id,
-        ...roomData,
-        host
-      });
-    }
+    // First, collect all room data and host IDs
+    querySnapshot.forEach(doc => {
+      const data = doc.data();
+      roomsData.push({ id: doc.id, ...data });
+      if (data.hostId) hostIds.push(data.hostId);
+    });
     
-    return rooms;
+    // Then batch fetch all hosts data
+    const hostsMap = await fetchHostsData(hostIds);
+    
+    // Finally, combine room data with host data
+    return roomsData.map(room => ({
+      ...room,
+      host: hostsMap[room.hostId]
+    })) as Room[];
   } catch (error) {
     console.error("Error getting rooms:", error);
     throw error;
@@ -162,31 +182,24 @@ export const getRoomsBySport = async (sportType: string): Promise<Room[]> => {
     const q = query(roomsCollection, where("sportType", "==", sportType));
     const querySnapshot = await getDocs(q);
     
-    const rooms: Room[] = [];
-    for (const roomDoc of querySnapshot.docs) {
-      const roomData = roomDoc.data() as FirebaseRoom;
-      
-      // Get host user data
-      let host: User | undefined;
-      try {
-        const hostRef = doc(usersCollection, roomData.hostId);
-        const hostDoc = await getDoc(hostRef);
-        
-        if (hostDoc.exists()) {
-          host = { id: hostDoc.id, ...hostDoc.data() } as User;
-        }
-      } catch (hostError) {
-        console.error(`Error fetching host for room ${roomDoc.id}:`, hostError);
-      }
-      
-      rooms.push({
-        id: roomDoc.id,
-        ...roomData,
-        host
-      });
-    }
+    const roomsData: DocumentData[] = [];
+    const hostIds: string[] = [];
     
-    return rooms;
+    // First, collect all room data and host IDs
+    querySnapshot.forEach(doc => {
+      const data = doc.data();
+      roomsData.push({ id: doc.id, ...data });
+      if (data.hostId) hostIds.push(data.hostId);
+    });
+    
+    // Then batch fetch all hosts data
+    const hostsMap = await fetchHostsData(hostIds);
+    
+    // Finally, combine room data with host data
+    return roomsData.map(room => ({
+      ...room,
+      host: hostsMap[room.hostId]
+    })) as Room[];
   } catch (error) {
     console.error("Error getting rooms by sport:", error);
     throw error;
@@ -199,31 +212,24 @@ export const getJoinedRooms = async (userId: string): Promise<Room[]> => {
     const q = query(roomsCollection, where("participants", "array-contains", userId));
     const querySnapshot = await getDocs(q);
     
-    const rooms: Room[] = [];
-    for (const roomDoc of querySnapshot.docs) {
-      const roomData = roomDoc.data() as FirebaseRoom;
-      
-      // Get host user data
-      let host: User | undefined;
-      try {
-        const hostRef = doc(usersCollection, roomData.hostId);
-        const hostDoc = await getDoc(hostRef);
-        
-        if (hostDoc.exists()) {
-          host = { id: hostDoc.id, ...hostDoc.data() } as User;
-        }
-      } catch (hostError) {
-        console.error(`Error fetching host for room ${roomDoc.id}:`, hostError);
-      }
-      
-      rooms.push({
-        id: roomDoc.id,
-        ...roomData,
-        host
-      });
-    }
+    const roomsData: DocumentData[] = [];
+    const hostIds: string[] = [];
     
-    return rooms;
+    // First, collect all room data and host IDs
+    querySnapshot.forEach(doc => {
+      const data = doc.data();
+      roomsData.push({ id: doc.id, ...data });
+      if (data.hostId) hostIds.push(data.hostId);
+    });
+    
+    // Then batch fetch all hosts data
+    const hostsMap = await fetchHostsData(hostIds);
+    
+    // Finally, combine room data with host data
+    return roomsData.map(room => ({
+      ...room,
+      host: hostsMap[room.hostId]
+    })) as Room[];
   } catch (error) {
     console.error("Error getting joined rooms:", error);
     throw error;
@@ -243,20 +249,17 @@ export const getRoomParticipants = async (roomId: string): Promise<User[]> => {
     const roomData = roomDoc.data() as FirebaseRoom;
     const participantIds = roomData.participants || [];
     
-    const participants: User[] = [];
-    for (const userId of participantIds) {
-      const userRef = doc(usersCollection, userId);
-      const userDoc = await getDoc(userRef);
-      
-      if (userDoc.exists()) {
-        participants.push({
-          id: userDoc.id,
-          ...userDoc.data() as Omit<User, 'id'>
-        });
-      }
+    if (participantIds.length === 0) {
+      return [];
     }
     
-    return participants;
+    // Batch fetch all participants
+    const participantsMap = await fetchHostsData(participantIds);
+    
+    // Convert map to array
+    return participantIds
+      .map(id => participantsMap[id])
+      .filter(Boolean); // Filter out any undefined values
   } catch (error) {
     console.error("Error getting room participants:", error);
     throw error;

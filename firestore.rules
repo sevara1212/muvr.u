@@ -1,8 +1,52 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow read and write access to all documents during development
-    // IMPORTANT: Change these rules before deploying to production
+    // Check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Check if the user is the owner of the document
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Check if user is the host of a room
+    function isRoomHost(roomData) {
+      return isAuthenticated() && request.auth.uid == roomData.hostId;
+    }
+    
+    // Check if user is a participant in a room
+    function isRoomParticipant(roomData) {
+      return isAuthenticated() && request.auth.uid in roomData.participants;
+    }
+    
+    // Users collection rules
+    match /users/{userId} {
+      // Allow read access to all authenticated users
+      // Allow write access only to the user's own document
+      allow read: if isAuthenticated();
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId);
+      allow delete: if isOwner(userId);
+    }
+    
+    // Rooms collection rules
+    match /rooms/{roomId} {
+      // Allow read access to all authenticated users
+      // Allow create for any authenticated user
+      // Allow update if user is the host or a participant (for joining/leaving)
+      // Allow delete only if user is the host
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isRoomHost(resource.data) || 
+                     (isAuthenticated() && 
+                      (request.resource.data.diff(resource.data).affectedKeys()
+                       .hasOnly(['participants'])));
+      allow delete: if isRoomHost(resource.data);
+    }
+    
+    // For development and testing - comment out in production
     match /{document=**} {
       allow read, write;
     }
