@@ -1,0 +1,91 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 40% 98%;
+    --foreground: 222.2 84% 4.9%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+
+    --primary: 199 89% 48%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 262 83% 64%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    --accent: 24 94% 53%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 199 89% 48%;
+
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* Custom styles for our fitness app */
+  .activity-card {
+    @apply relative overflow-hidden rounded-lg border bg-white p-4 shadow-sm transition-all hover:shadow-md;
+  }
+  
+  .activity-tag {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+  }
+  
+  /* Sport category colors */
+  .sport-running {
+    @apply bg-blue-100 text-blue-800;
+  }
+  
+  .sport-yoga {
+    @apply bg-purple-100 text-purple-800;
+  }
+  
+  .sport-cycling {
+    @apply bg-green-100 text-green-800;
+  }
+  
+  .sport-swimming {
+    @apply bg-cyan-100 text-cyan-800;
+  }
+  
+  .sport-basketball {
+    @apply bg-orange-100 text-orange-800;
+  }
+  
+  .sport-football {
+    @apply bg-red-100 text-red-800;
+  }
+  
+  .sport-tennis {
+    @apply bg-yellow-100 text-yellow-800;
+  }
+  
+  .sport-gym {
+    @apply bg-gray-100 text-gray-800;
+  }
+}
