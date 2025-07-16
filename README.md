@@ -1,73 +1,64 @@
-# Welcome to your Lovable project
+# Fit Tribe Mobile Hub
 
-## Project info
+A mobile-friendly web application for creating and joining fitness activities with like-minded individuals.
 
-**URL**: https://lovable.dev/projects/229d9c6c-2f20-4e59-96b9-bd0bfbfe1a1b
+## Features
 
-## How can I edit this code?
+- **User Authentication**: Sign up, login, and profile management
+- **Activity Creation**: Create fitness activities with details like location, time, and capacity
+- **Activity Discovery**: Browse and search for activities by sport type
+- **Social Interaction**: Join activities and see other participants
+- **Location Sharing**: Share activity locations with links to maps
 
-There are several ways of editing your application.
+## Tech Stack
 
-**Use Lovable**
+- React with TypeScript
+- Firebase (Authentication, Firestore, Storage)
+- Tailwind CSS for styling
+- React Router for navigation
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/229d9c6c-2f20-4e59-96b9-bd0bfbfe1a1b) and start prompting.
+## Getting Started
 
-Changes made via Lovable will be committed automatically to this repo.
+### Prerequisites
 
-**Use your preferred IDE**
+- Node.js (v14 or later)
+- npm or yarn
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### Installation
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+1. Clone the repository
+```bash
+git clone https://github.com/your-username/fit-tribe-mobile-hub.git
+cd fit-tribe-mobile-hub
 ```
 
-**Edit a file directly in GitHub**
+2. Install dependencies
+```bash
+npm install
+# or
+yarn install
+```
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+3. Set up Firebase
+   - Create a Firebase project at [firebase.google.com](https://firebase.google.com)
+   - Add your Firebase configuration in `src/lib/firebase.config.ts`
 
-**Use GitHub Codespaces**
+4. Start the development server
+```bash
+npm run dev
+# or
+yarn dev
+```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Deployment
 
-## What technologies are used for this project?
+The application can be deployed to Firebase Hosting:
 
-This project is built with:
+```bash
+npm run build
+firebase deploy
+```
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## License
 
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/229d9c6c-2f20-4e59-96b9-bd0bfbfe1a1b) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+[MIT](LICENSE)
