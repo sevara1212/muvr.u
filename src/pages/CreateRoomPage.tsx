@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { ArrowLeft } from "lucide-react";
@@ -31,14 +31,15 @@ interface CreateRoomForm {
 
 const CreateRoomPage = () => {
   const navigate = useNavigate();
-  const { currentUser } = useAuth();
+  const { currentUser, loading } = useAuth();
   const [isPaid, setIsPaid] = useState(false);
   
   // Redirect to login if not authenticated
-  if (!currentUser) {
-    navigate("/login", { state: { from: "/create" } });
-    return null;
-  }
+  useEffect(() => {
+    if (!loading && !currentUser) {
+      navigate("/login", { state: { from: "/create" } });
+    }
+  }, [currentUser, loading, navigate]);
   
   const {
     register,
@@ -57,6 +58,12 @@ const CreateRoomPage = () => {
   
   const onSubmit = async (data: CreateRoomForm) => {
     try {
+      // Check if user is logged in
+      if (!currentUser) {
+        toast.error("You must be logged in to create an activity");
+        return;
+      }
+      
       // Combine date and time into a single dateTime string
       const dateTime = new Date(`${data.date}T${data.time}`).toISOString();
       
@@ -88,6 +95,22 @@ const CreateRoomPage = () => {
       toast.error(error.message || "Failed to create activity");
     }
   };
+  
+  // Show loading state if auth is still loading
+  if (loading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center h-72">
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-fitness-primary"></div>
+        </div>
+      </Layout>
+    );
+  }
+  
+  // If user is not authenticated and loading is complete, the useEffect will redirect
+  if (!currentUser) {
+    return null;
+  }
   
   return (
     <Layout>

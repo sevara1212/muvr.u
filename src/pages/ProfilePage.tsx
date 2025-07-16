@@ -49,6 +49,13 @@ const ProfilePage = () => {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
+  // Check if user is logged in and redirect if not
+  useEffect(() => {
+    if (!loading && !currentUser) {
+      navigate('/login');
+    }
+  }, [currentUser, loading, navigate]);
+  
   // Initialize edit fields when user data is available
   useEffect(() => {
     if (user) {
@@ -131,12 +138,7 @@ const ProfilePage = () => {
   // Use either user from useProfile or currentUser from useAuth
   const displayUser = user || currentUser;
   
-  if (!displayUser) {
-    navigate('/login');
-    return null;
-  }
-  
-  if (loading) {
+  if (loading || !displayUser) {
     return (
       <Layout>
         <div className="flex items-center justify-center h-72">
