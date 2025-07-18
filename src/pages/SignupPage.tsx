@@ -62,68 +62,63 @@ const SignupPage = () => {
   };
   
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-50">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl text-center">Create an account</CardTitle>
-          <CardDescription className="text-center">
-            Enter your information to create an account
-          </CardDescription>
-        </CardHeader>
-        <form onSubmit={handleSignup}>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Full Name</Label>
-              <Input
-                id="name"
-                type="text"
-                placeholder="John Doe"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="name@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                minLength={6}
-                required
-              />
-              <p className="text-xs text-gray-500">Password must be at least 6 characters</p>
-            </div>
-          </CardContent>
-          <CardFooter className="flex flex-col space-y-4">
-            <Button 
-              type="submit" 
-              className="w-full bg-fitness-primary" 
-              disabled={loading}
-            >
-              {loading ? "Creating account..." : "Sign up"}
-            </Button>
-            <div className="text-center text-sm">
-              Already have an account?{" "}
-              <Link to="/login" className="text-fitness-primary hover:underline">
-                Log in
-              </Link>
-            </div>
-          </CardFooter>
-        </form>
-      </Card>
+    <div className="flex items-center justify-center min-h-screen bg-white">
+      <form onSubmit={handleSignup} className="w-full max-w-sm space-y-4">
+        <div className="text-xl font-bold text-center mb-1 text-black">Create an account</div>
+        <div className="text-center text-black mb-4 text-sm">
+          Enter your information to create an account
+        </div>
+        <div className="space-y-3">
+          <div>
+            <label htmlFor="name" className="block text-xs font-medium mb-1 text-black">Full Name</label>
+            <input
+              id="name"
+              type="text"
+              placeholder="John Doe"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              className="w-full px-3 py-1.5 rounded bg-white border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#35179d] text-black placeholder-gray-400 text-sm"
+            />
+          </div>
+          <div>
+            <label htmlFor="email" className="block text-xs font-medium mb-1 text-black">Email</label>
+            <input
+              id="email"
+              type="email"
+              placeholder="name@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              className="w-full px-3 py-1.5 rounded bg-white border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#35179d] text-black placeholder-gray-400 text-sm"
+            />
+          </div>
+          <div>
+            <label htmlFor="password" className="block text-xs font-medium mb-1 text-black">Password</label>
+            <input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              minLength={6}
+              required
+              className="w-full px-3 py-1.5 rounded bg-white border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#35179d] text-black text-sm"
+            />
+            <p className="text-xs text-gray-500 mt-1">Password must be at least 6 characters</p>
+          </div>
+        </div>
+        <button 
+          type="submit" 
+          className="w-full py-1.5 rounded bg-[#35179d] text-white font-bold text-base mt-2 hover:bg-[#2a146a] transition"
+          disabled={loading}
+        >
+          {loading ? "Signing up..." : "Sign up"}
+        </button>
+        <div className="text-center text-xs mt-3 text-black">
+          Already have an account?{' '}
+          <a href="/login" className="text-[#35179d] font-semibold hover:underline">Log in</a>
+        </div>
+      </form>
     </div>
   );
 };
