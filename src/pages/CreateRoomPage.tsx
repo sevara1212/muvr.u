@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
+import { useRef } from "react";
 import { ArrowLeft } from "lucide-react";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
@@ -11,7 +12,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { ActivityLevel, SportType } from "@/types";
-import { getSportIcon } from "@/lib/utils";
+// import { getSportIcon } from "@/lib/utils";
 import { createRoom } from "@/services/roomService";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -46,6 +47,7 @@ const CreateRoomPage = () => {
     handleSubmit,
     formState: { errors, isSubmitting },
     watch,
+    setValue,
   } = useForm<CreateRoomForm>({
     defaultValues: {
       sportType: SportType.Running,
@@ -68,7 +70,7 @@ const CreateRoomPage = () => {
       const dateTime = new Date(`${data.date}T${data.time}`).toISOString();
       
       // Prepare room data
-      const roomData = {
+      const roomData: any = {
         title: data.title,
         description: data.description,
         sportType: data.sportType,
@@ -82,9 +84,11 @@ const CreateRoomPage = () => {
           lat: 0, // Default values since we're not using maps
           lng: 0
         },
-        hostId: currentUser.id,
-        price: isPaid ? data.price : undefined
+        hostId: currentUser.id
       };
+      if (isPaid && data.price) {
+        roomData.price = data.price;
+      }
       
       // Create room in Firebase
       const roomId = await createRoom(roomData, currentUser.id);
@@ -121,7 +125,6 @@ const CreateRoomPage = () => {
           className="mr-3 cursor-pointer" 
           onClick={() => navigate(-1)}
         />
-        <h1 className="text-xl font-bold">Create Activity</h1>
       </div>
       
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
@@ -133,7 +136,7 @@ const CreateRoomPage = () => {
               id="title"
               placeholder="Give your activity a name"
               {...register("title", { required: "Title is required" })}
-              className={errors.title ? "border-red-500" : ""}
+              className={`bg-white placeholder:text-gray-400 text-gray-900 ${errors.title ? "border-red-500" : ""}`}
             />
             {errors.title && <p className="text-red-500 text-xs mt-1">{errors.title.message}</p>}
           </div>
@@ -145,35 +148,39 @@ const CreateRoomPage = () => {
               placeholder="Describe your activity..."
               rows={3}
               {...register("description")}
+              className="bg-white placeholder:text-gray-400 text-gray-900"
             />
           </div>
           
           <div>
             <Label>Sport Type</Label>
             <div className="grid grid-cols-2 gap-3 mt-2">
-              {Object.values(SportType).map((sport) => (
-                <div 
-                  key={sport}
-                  className={`flex items-center p-3 rounded-lg border cursor-pointer ${
-                    selectedSport === sport ? 'border-fitness-primary bg-blue-50' : ''
-                  }`}
-                  onClick={() => {
-                    // Replace this with React Hook Form's setValue in a real implementation
-                  }}
-                >
-                  <input
-                    type="radio"
-                    id={sport}
-                    value={sport}
-                    className="sr-only"
-                    {...register("sportType")}
-                  />
-                  <span className="mr-2">{getSportIcon(sport)}</span>
-                  <Label htmlFor={sport} className="cursor-pointer">
+              {Object.values(SportType).map((sport) => {
+                const sportImageMap = {
+                  Running: "/images/running_icon.png",
+                  Yoga: "/images/yoga_icon.png",
+                  Cycling: "/images/cycling_icon.png",
+                  Swimming: "/images/swimming_icon.png",
+                  Basketball: "/images/basketball_icon.png",
+                  Football: "/images/football_icon.png",
+                  Tennis: "/images/tennis_icon.png",
+                  Gym: "/images/gym_icon.png",
+                  Other: "/images/other_icon.png"
+                };
+                return (
+                  <button
+                    type="button"
+                    key={sport}
+                    className={`flex items-center justify-center gap-2 p-3 rounded-lg border w-full font-semibold text-base transition-all focus:outline-none focus:ring-2 focus:ring-[#35179d] ${
+                      selectedSport === sport ? 'bg-[#35179d] text-white border-[#35179d] shadow-lg' : 'bg-white text-[#35179d] border-gray-300'
+                    }`}
+                    onClick={() => setValue("sportType", sport)}
+                  >
+                    <img src={sportImageMap[sport]} alt={sport} className="w-6 h-6 object-contain" />
                     {sport}
-                  </Label>
-                </div>
-              ))}
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -187,7 +194,8 @@ const CreateRoomPage = () => {
                 id="date"
                 type="date"
                 {...register("date", { required: "Date is required" })}
-                className={errors.date ? "border-red-500" : ""}
+                className={`bg-white placeholder:text-gray-400 text-orange-500 ${errors.date ? "border-red-500" : ""}`}
+                style={{ colorScheme: 'orange' }}
               />
               {errors.date && <p className="text-red-500 text-xs mt-1">{errors.date.message}</p>}
             </div>
@@ -198,7 +206,7 @@ const CreateRoomPage = () => {
                 id="time"
                 type="time"
                 {...register("time", { required: "Time is required" })}
-                className={errors.time ? "border-red-500" : ""}
+                className={`bg-white placeholder:text-gray-400 text-gray-900 ${errors.time ? "border-red-500" : ""}`}
               />
               {errors.time && <p className="text-red-500 text-xs mt-1">{errors.time.message}</p>}
             </div>
@@ -216,7 +224,7 @@ const CreateRoomPage = () => {
                   required: "Duration is required",
                   min: { value: 15, message: "Minimum 15 minutes" },
                 })}
-                className={errors.duration ? "border-red-500" : ""}
+                className={`bg-white placeholder:text-gray-400 text-gray-900 ${errors.duration ? "border-red-500" : ""}`}
               />
               {errors.duration && <p className="text-red-500 text-xs mt-1">{errors.duration.message}</p>}
             </div>
@@ -233,7 +241,7 @@ const CreateRoomPage = () => {
                   min: { value: 1, message: "At least 1" },
                   max: { value: 50, message: "Max 50" },
                 })}
-                className={errors.maxParticipants ? "border-red-500" : ""}
+                className={`bg-white placeholder:text-gray-400 text-gray-900 ${errors.maxParticipants ? "border-red-500" : ""}`}
               />
               {errors.maxParticipants && <p className="text-red-500 text-xs mt-1">{errors.maxParticipants.message}</p>}
             </div>
@@ -248,7 +256,7 @@ const CreateRoomPage = () => {
               id="address"
               placeholder="Activity location"
               {...register("address", { required: "Address is required" })}
-              className={errors.address ? "border-red-500" : ""}
+              className={`bg-white placeholder:text-gray-400 text-gray-900 ${errors.address ? "border-red-500" : ""}`}
             />
             {errors.address && <p className="text-red-500 text-xs mt-1">{errors.address.message}</p>}
           </div>
@@ -259,7 +267,7 @@ const CreateRoomPage = () => {
               id="city"
               placeholder="City"
               {...register("city", { required: "City is required" })}
-              className={errors.city ? "border-red-500" : ""}
+              className={`bg-white placeholder:text-gray-400 text-gray-900 ${errors.city ? "border-red-500" : ""}`}
             />
             {errors.city && <p className="text-red-500 text-xs mt-1">{errors.city.message}</p>}
           </div>
@@ -270,6 +278,7 @@ const CreateRoomPage = () => {
               id="locationLink"
               placeholder="Google Maps or other location link"
               {...register("locationLink")}
+              className={`bg-white placeholder:text-gray-400 text-gray-900`}
             />
             <p className="text-xs text-gray-500 mt-1">
               Add a Google Maps link to help participants find the location
@@ -282,26 +291,28 @@ const CreateRoomPage = () => {
           <Label>Activity Type</Label>
           <RadioGroup defaultValue="free" className="flex">
             <div className="flex items-center space-x-2 mr-6">
-              <RadioGroupItem value="free" id="free" onClick={() => setIsPaid(false)} />
+              <RadioGroupItem value="free" id="free" onClick={() => setIsPaid(false)} className="data-[state=checked]:border-orange-500 data-[state=checked]:bg-orange-500" />
               <Label htmlFor="free">Free</Label>
             </div>
             <div className="flex items-center space-x-2">
-              <RadioGroupItem value="paid" id="paid" onClick={() => setIsPaid(true)} />
-              <Label htmlFor="paid">Paid</Label>
+              <RadioGroupItem value="paid" id="paid" onClick={() => setIsPaid(true)} className="data-[state=checked]:border-orange-500 data-[state=checked]:bg-orange-500" />
+              <Label htmlFor="paid">Price (uzs)</Label>
             </div>
           </RadioGroup>
           
           {isPaid && (
             <div className="pt-3">
-              <Label htmlFor="price">Price ($)</Label>
+              <Label htmlFor="price">Price (uzs)</Label>
               <Input
                 id="price"
                 type="number"
                 min={1}
-                step={0.01}
-                placeholder="0.00"
+                step={1000}
+                placeholder="0"
                 {...register("price")}
+                className={`bg-white placeholder:text-gray-400 text-gray-900 ${errors.price ? "border-red-500" : ""}`}
               />
+              {errors.price && <p className="text-red-500 text-xs mt-1">{errors.price.message}</p>}
             </div>
           )}
         </div>
@@ -309,12 +320,18 @@ const CreateRoomPage = () => {
         {/* Submit Button */}
         <Button 
           type="submit" 
-          className="w-full bg-fitness-primary hover:bg-fitness-primary/90" 
+          className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold" 
           disabled={isSubmitting}
         >
           {isSubmitting ? "Creating..." : "Create Activity"}
         </Button>
       </form>
+      {/* Style for date picker selected day */}
+      <style>{`
+        input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(54%) sepia(98%) saturate(749%) hue-rotate(0deg) brightness(102%) contrast(101%); }
+        input[type="date"]::-webkit-input-placeholder { color: #a3a3a3; }
+        input[type="date"]::placeholder { color: #a3a3a3; }
+      `}</style>
     </Layout>
   );
 };
