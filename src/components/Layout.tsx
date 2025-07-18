@@ -9,7 +9,7 @@ interface LayoutProps {
 
 const Layout = ({ children, hideNav = false }: LayoutProps) => {
   return (
-    <div className="flex flex-col min-h-screen bg-fitness-background pb-16">
+    <div className="flex flex-col min-h-screen bg-[#35179d] pb-16">
       <main className="flex-grow max-w-md mx-auto w-full px-4 py-4">
         {children}
       </main>
