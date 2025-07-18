@@ -1,4 +1,4 @@
-# Fit Tribe Mobile Hub
+# Muvr.u Mobile App 
 
 A mobile-friendly web application for creating and joining fitness activities with like-minded individuals.
 
