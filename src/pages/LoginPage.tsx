@@ -38,55 +38,49 @@ const LoginPage = () => {
   };
   
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-50">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl text-center">Login</CardTitle>
-          <CardDescription className="text-center">
-            Enter your email and password to login to your account
-          </CardDescription>
-        </CardHeader>
-        <form onSubmit={handleLogin}>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="name@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </div>
-          </CardContent>
-          <CardFooter className="flex flex-col space-y-4">
-            <Button 
-              type="submit" 
-              className="w-full bg-fitness-primary" 
-              disabled={loading}
-            >
-              {loading ? "Logging in..." : "Login"}
-            </Button>
-            <div className="text-center text-sm">
-              Don't have an account?{" "}
-              <Link to="/signup" className="text-fitness-primary hover:underline">
-                Sign up
-              </Link>
-            </div>
-          </CardFooter>
-        </form>
-      </Card>
+    <div className="flex items-center justify-center min-h-screen bg-white">
+      <form onSubmit={handleLogin} className="w-full max-w-sm space-y-4">
+        <div className="text-xl font-bold text-center mb-1 text-black">Login</div>
+        <div className="text-center text-black mb-4 text-sm">
+          Enter your email and password to login to your account
+        </div>
+        <div className="space-y-3">
+          <div>
+            <label htmlFor="email" className="block text-xs font-medium mb-1 text-black">Email</label>
+            <input
+              id="email"
+              type="email"
+              placeholder="name@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              className="w-full px-3 py-1.5 rounded bg-white border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#35179d] text-black placeholder-gray-400 text-sm"
+            />
+          </div>
+          <div>
+            <label htmlFor="password" className="block text-xs font-medium mb-1 text-black">Password</label>
+            <input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              className="w-full px-3 py-1.5 rounded bg-white border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#35179d] text-black text-sm"
+            />
+          </div>
+        </div>
+        <button 
+          type="submit" 
+          className="w-full py-1.5 rounded bg-[#35179d] text-white font-bold text-base mt-2 hover:bg-[#2a146a] transition"
+          disabled={loading}
+        >
+          {loading ? "Logging in..." : "Login"}
+        </button>
+        <div className="text-center text-xs mt-3 text-black">
+          Don't have an account?{' '}
+          <a href="/signup" className="text-[#35179d] font-semibold hover:underline">Sign up</a>
+        </div>
+      </form>
     </div>
   );
 };
