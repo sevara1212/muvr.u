@@ -58,6 +58,13 @@ const Index = () => {
   // Determine popular sport categories
   const popularSportTypes = [SportType.Running, SportType.Yoga, SportType.Basketball, SportType.Cycling];
   
+  const sportIcons: Record<string, string> = {
+    Running: '/images/running_icon.png',
+    Yoga: '/images/yoga_icon.png',
+    Basketball: '/images/basketball_icon.png',
+    Cycling: '/images/cycling_icon.png',
+  };
+
   const handleRoomAction = () => {
     // Refresh data when a user joins or leaves a room
     fetchAllRooms();
@@ -65,110 +72,109 @@ const Index = () => {
   
   return (
     <Layout>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold">FitTribe</h1>
-          <div 
-            className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden cursor-pointer"
-            onClick={() => navigate('/profile')}
-          >
+      <div className="min-h-screen bg-[#35179d] text-white flex flex-col items-center justify-start font-sans" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
+        {/* Header and Slogan */}
+        <div className="w-full max-w-2xl px-4 pt-8 pb-2">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center justify-center rounded-full bg-white overflow-hidden" style={{ height: '3.5rem', width: '3.5rem', minWidth: '3.5rem' }}>
+              <img src="/images/muvr_logo.png" alt="Muvr Logo" className="h-[60rem] w-[60rem] object-contain" />
+            </div>
+            <h1 className="text-5xl sm:text-6xl font-extrabold text-left leading-tight">Muvr.u</h1>
+          </div>
+          {/* Search Bar */}
+          <div className="my-4">
+            <div className="flex items-center bg-[#7c5dfa]/60 rounded-full px-4 py-2 shadow-inner">
+              <Search size={20} className="text-white/80 mr-2" />
+              <input
+                type="text"
+                placeholder="Search activities..."
+                className="bg-transparent outline-none border-none text-white/90 placeholder-white/70 w-full text-base"
+                style={{ fontFamily: 'inherit' }}
+                readOnly
+                onClick={() => navigate('/explore')}
+              />
+            </div>
+          </div>
+          <div className="text-2xl sm:text-3xl font-bold text-left mt-2 mb-4">Move , Match , Motivate!</div>
+        </div>
+        {/* Hero Image */}
+        <div className="w-full max-w-2xl px-4 mb-4">
+          <div className="rounded-[2.5rem] shadow-xl overflow-hidden">
             <img 
-              src={currentUser?.avatar || "https://randomuser.me/api/portraits/lego/1.jpg"} 
-              alt="Profile" 
-              className="w-full h-full object-cover"
+              src="/images/muvr_photo.png"
+              alt="Muvr Team"
+              className="w-full object-cover"
+              style={{ maxHeight: '380px', minHeight: '220px', objectFit: 'cover' }}
             />
           </div>
         </div>
-        
-        {/* Search Bar */}
-        <div 
-          className="flex items-center bg-white rounded-full border p-2 px-4 cursor-pointer"
-          onClick={() => navigate('/explore')}
-        >
-          <Search size={18} className="text-gray-400 mr-2" />
-          <span className="text-gray-400">Search activities...</span>
-        </div>
-        
-        {/* Sport Categories */}
-        <div>
-          <div className="flex justify-between items-center mb-3">
-            <h2 className="text-lg font-semibold">Categories</h2>
+        {/* Categories */}
+        <div className="w-full max-w-2xl px-4 mb-4">
+          <div className="flex justify-between items-center mb-2">
+            <h2 className="text-2xl font-bold text-left">Categories</h2>
             <button 
               onClick={() => navigate('/explore')}
-              className="text-sm text-fitness-primary"
+              className="text-base text-white/80 hover:text-white underline font-medium"
             >
               See all
             </button>
           </div>
           <div className="grid grid-cols-4 gap-3">
             {popularSportTypes.map(sport => (
-              <SportCategoryCard key={sport} sportType={sport} />
+              <div className="flex flex-col items-center justify-between bg-white rounded-2xl shadow h-24 w-20 mx-auto cursor-pointer hover:bg-gray-100 transition p-2" key={sport}>
+                <div className="flex-grow flex flex-col items-center justify-center">
+                  <img 
+                    src={sportIcons[sport]} 
+                    alt={sport + ' icon'} 
+                    className="h-14 w-14 object-contain mb-[2px]" 
+                  />
+                  <span className="text-xs font-semibold text-[#35179d] capitalize leading-tight text-center mt-0.5">{sport}</span>
+                </div>
+              </div>
             ))}
           </div>
         </div>
-        
         {/* Upcoming Activities */}
-        <div>
-          <div className="flex justify-between items-center mb-3">
-            <h2 className="text-lg font-semibold">
-              {currentUser ? "Recommended for You" : "Upcoming Activities"}
-            </h2>
-            <button 
-              onClick={() => navigate('/activities')}
-              className="text-sm text-fitness-primary"
-            >
-              See all
-            </button>
-          </div>
-          
-          {loading ? (
-            <div className="flex justify-center py-10">
-              <Loader2 className="h-8 w-8 animate-spin text-fitness-primary" />
-            </div>
-          ) : error ? (
-            <div className="text-center py-10 text-red-500">
-              Failed to load activities. Please try again.
-            </div>
-          ) : recommendedRooms.length > 0 ? (
-            <div className="space-y-4">
-              {recommendedRooms.map(room => (
+        <div className="w-full max-w-2xl px-4 mb-4">
+          <h2 className="text-2xl font-bold text-left mb-2">Upcoming Activities</h2>
+          <div className="space-y-3">
+            {loading ? (
+              <div className="flex justify-center py-4">
+                <Loader2 className="h-8 w-8 animate-spin text-white/80" />
+              </div>
+            ) : error ? (
+              <div className="text-center py-4 text-red-300">
+                Failed to load activities. Please try again.
+              </div>
+            ) : recommendedRooms.length > 0 ? (
+              recommendedRooms.map(room => (
                 <RoomCard 
-                  key={room.id} 
+                  key={room.id}
                   room={room} 
                   onActionComplete={handleRoomAction}
                 />
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-10 text-gray-500">
-              No upcoming activities found. 
-              <button 
-                onClick={() => navigate('/create')}
-                className="ml-2 text-fitness-primary"
-              >
-                Create one?
-              </button>
-            </div>
-          )}
+              ))
+            ) : (
+              <div className="text-center py-4 text-white/60">
+                No upcoming activities found. 
+                <button 
+                  onClick={() => navigate('/create')}
+                  className="ml-2 underline hover:text-white"
+                >
+                  Create one?
+                </button>
+              </div>
+            )}
+          </div>
         </div>
-        
         {/* User's Activities (if logged in) */}
         {currentUser && userRooms.length > 0 && (
-          <div>
-            <div className="flex justify-between items-center mb-3">
-              <h2 className="text-lg font-semibold">Your Activities</h2>
-              <button 
-                onClick={() => navigate('/activities')}
-                className="text-sm text-fitness-primary"
-              >
-                See all
-              </button>
-            </div>
-            <div className="space-y-4">
+          <div className="w-full max-w-2xl px-4 mb-4">
+            <h2 className="text-2xl font-bold text-left mb-2">Your Activities</h2>
+            <div className="space-y-3">
               {userRooms.slice(0, 2).map(room => (
                 <RoomCard 
-                  key={room.id} 
+                  key={room.id}
                   room={room} 
                   onActionComplete={handleRoomAction}
                 />
