@@ -89,6 +89,19 @@ const ExplorePage = () => {
     }
   };
   
+  // Category list and icon mapping
+  const categories = [
+    { name: 'Running', icon: '/images/running_icon.png' },
+    { name: 'Yoga', icon: '/images/yoga_icon.png' },
+    { name: 'Cycling', icon: '/images/cycling_icon.png' },
+    { name: 'Swimming', icon: '/images/swimming_icon.png' },
+    { name: 'Basketball', icon: '/images/basketball_icon.png' },
+    { name: 'Football', icon: '/images/football_icon.png' },
+    { name: 'Tennis', icon: '/images/tennis_icon.png' },
+    { name: 'Gym', icon: '/images/gym_icon.png' },
+    { name: 'Other', icon: '/images/other_icon.png' },
+  ];
+  
   return (
     <Layout>
       {/* Header */}
@@ -118,13 +131,16 @@ const ExplorePage = () => {
       <div className="mb-6">
         <h2 className="text-lg font-semibold mb-3">Categories</h2>
         <div className="grid grid-cols-4 gap-3">
-          {Object.values(SportType).map((sport) => (
-            <div 
-              key={sport}
-              onClick={() => handleCategorySelect(sport)}
-              className={`${selectedCategory === sport ? 'ring-2 ring-fitness-primary' : ''} rounded-lg`}
+          {categories.map((cat) => (
+            <div
+              key={cat.name}
+              onClick={() => handleCategorySelect(cat.name as SportType)}
+              className={`${selectedCategory === cat.name ? 'ring-2 ring-fitness-primary' : ''} flex flex-col items-center justify-between bg-white rounded-2xl shadow h-20 w-20 mx-auto cursor-pointer hover:bg-gray-100 transition p-2`}
             >
-              <SportCategoryCard sportType={sport} />
+              <div className="flex-grow flex flex-col items-center justify-center">
+                <img src={cat.icon} alt={cat.name + ' icon'} className="h-14 w-14 object-contain mb-0" />
+                <span className="text-xs font-semibold text-[#35179d] capitalize leading-tight text-center mt-0">{cat.name}</span>
+              </div>
             </div>
           ))}
         </div>
