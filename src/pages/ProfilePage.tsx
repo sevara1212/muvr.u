@@ -150,228 +150,230 @@ const ProfilePage = () => {
   
   return (
     <Layout>
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center">
-          <ArrowLeft 
-            size={20} 
-            className="mr-3 cursor-pointer" 
-            onClick={() => navigate(-1)}
-          />
-          <h1 className="text-xl font-bold">Profile</h1>
-        </div>
-        {isEditing ? (
-          <div className="flex gap-2">
+      <div className="min-h-screen bg-[#35179d] py-6">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center">
+            <ArrowLeft 
+              size={20} 
+              className="mr-3 cursor-pointer" 
+              onClick={() => navigate(-1)}
+            />
+            <h1 className="text-xl font-bold">Profile</h1>
+          </div>
+          {isEditing ? (
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setIsEditing(false)}
+              >
+                <X className="h-4 w-4 mr-1" /> Cancel
+              </Button>
+              <Button 
+                size="sm"
+                className="bg-[#ff8800] text-white font-bold hover:bg-orange-600"
+                onClick={handleSaveProfile}
+                disabled={loading}
+              >
+                {loading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Check className="h-4 w-4 mr-1" />} Save
+              </Button>
+            </div>
+          ) : (
             <Button 
               variant="outline" 
               size="sm" 
-              onClick={() => setIsEditing(false)}
+              onClick={() => setIsEditing(true)}
             >
-              <X className="h-4 w-4 mr-1" /> Cancel
+              <Edit2 className="h-4 w-4 mr-1" /> Edit
             </Button>
-            <Button 
-              variant="default" 
-              size="sm" 
-              onClick={handleSaveProfile}
-              disabled={loading}
-            >
-              {loading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Check className="h-4 w-4 mr-1" />} Save
-            </Button>
-          </div>
-        ) : (
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={() => setIsEditing(true)}
-          >
-            <Edit2 className="h-4 w-4 mr-1" /> Edit
-          </Button>
-        )}
-      </div>
-      
-      {/* Profile Content */}
-      <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
-        {/* Cover Photo & Avatar */}
-        <div className="relative">
-          <div className="h-32 bg-gradient-to-r from-fitness-primary to-fitness-secondary" />
-          <div className="absolute left-1/2 transform -translate-x-1/2 -bottom-12">
-            <div className="relative w-24 h-24 rounded-full border-4 border-white overflow-hidden">
-              <img 
-                src={avatarUrl || displayUser?.avatar || "https://randomuser.me/api/portraits/lego/1.jpg"} 
-                alt="Profile" 
-                className="w-full h-full object-cover"
-              />
-              {isEditing && (
-                <>
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleImageUpload}
-                    className="hidden"
-                    accept="image/*"
-                  />
-                  <div 
-                    className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center cursor-pointer"
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    {uploadingImage ? (
-                      <Loader2 className="h-6 w-6 text-white animate-spin" />
-                    ) : (
-                      <Camera className="h-6 w-6 text-white" />
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-        
-        {/* User Info */}
-        <div className="pt-16 pb-6 px-6 text-center">
-          <h2 className="text-xl font-bold">{displayUser?.name}</h2>
-          <p className="text-gray-500 text-sm">
-            Member since {displayUser?.joinedDate ? new Date(displayUser.joinedDate).toLocaleDateString() : 'N/A'}
-          </p>
-          
-          {isEditing ? (
-            <div className="mt-3">
-              <Textarea
-                placeholder="Write something about yourself..."
-                value={editBio}
-                onChange={(e) => setEditBio(e.target.value)}
-                className="resize-none"
-                rows={3}
-              />
-            </div>
-          ) : (
-            displayUser?.bio && (
-              <p className="mt-3 text-gray-700">{displayUser.bio}</p>
-            )
           )}
         </div>
         
-        <Separator />
-        
-        {/* Activity Level */}
-        <div className="p-6">
-          <h3 className="text-lg font-semibold mb-3">Activity Level</h3>
-          {isEditing ? (
-            <Select
-              value={selectedLevel || undefined}
-              onValueChange={(value) => setSelectedLevel(value as ActivityLevel)}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select your activity level" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={ActivityLevel.Beginner}>Beginner</SelectItem>
-                <SelectItem value={ActivityLevel.Intermediate}>Intermediate</SelectItem>
-                <SelectItem value={ActivityLevel.Advanced}>Advanced</SelectItem>
-              </SelectContent>
-            </Select>
-          ) : (
-            <>
-              <div className="flex justify-between mb-2">
-                <span className="text-sm">Beginner</span>
-                <span className="text-sm">Advanced</span>
+        {/* Profile Content */}
+        <div className="bg-[#35179d] rounded-2xl overflow-hidden shadow-sm">
+          {/* Cover Photo & Avatar */}
+          <div className="relative">
+            <div className="h-32 bg-gradient-to-b from-white to-white/0" />
+            <div className="absolute left-1/2 transform -translate-x-1/2 -bottom-12">
+              <div className="relative w-24 h-24 rounded-full border-4 border-white overflow-hidden">
+                <img 
+                  src={avatarUrl || displayUser?.avatar || "https://randomuser.me/api/portraits/lego/1.jpg"} 
+                  alt="Profile" 
+                  className="w-full h-full object-cover"
+                />
+                {isEditing && (
+                  <>
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleImageUpload}
+                      className="hidden"
+                      accept="image/*"
+                    />
+                    <div 
+                      className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center cursor-pointer"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      {uploadingImage ? (
+                        <Loader2 className="h-6 w-6 text-white animate-spin" />
+                      ) : (
+                        <Camera className="h-6 w-6 text-white" />
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
-              <div className="w-full h-2 bg-gray-200 rounded-full">
-                <div 
-                  className="h-full bg-fitness-primary rounded-full" 
-                  style={{ 
-                    width: displayUser?.activityLevel === ActivityLevel.Beginner 
-                      ? "33%" 
-                      : displayUser?.activityLevel === ActivityLevel.Intermediate 
-                      ? "66%" 
-                      : "100%" 
-                  }} 
+            </div>
+          </div>
+          
+          {/* User Info */}
+          <div className="pt-16 pb-6 px-6 text-center text-white">
+            <h2 className="text-xl font-bold">{displayUser?.name}</h2>
+            <p className="text-white/70 text-sm">
+              Member since {displayUser?.joinedDate ? new Date(displayUser.joinedDate).toLocaleDateString() : 'N/A'}
+            </p>
+            
+            {isEditing ? (
+              <div className="mt-3">
+                <Textarea
+                  placeholder="Write something about yourself..."
+                  value={editBio}
+                  onChange={(e) => setEditBio(e.target.value)}
+                  className="resize-none"
+                  rows={3}
                 />
               </div>
-              <div className="text-center mt-2">
-                <Badge variant="outline" className="bg-white">
-                  {displayUser?.activityLevel || 'Not set'}
-                </Badge>
+            ) : (
+              displayUser?.bio && (
+                <p className="mt-3 text-white/90">{displayUser.bio}</p>
+              )
+            )}
+          </div>
+          
+          <Separator />
+          
+          {/* Activity Level */}
+          <div className="p-6">
+            <h3 className="text-lg font-semibold mb-3 text-white">Activity Level</h3>
+            {isEditing ? (
+              <Select
+                value={selectedLevel || undefined}
+                onValueChange={(value) => setSelectedLevel(value as ActivityLevel)}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select your activity level" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ActivityLevel.Beginner}>Beginner</SelectItem>
+                  <SelectItem value={ActivityLevel.Intermediate}>Intermediate</SelectItem>
+                  <SelectItem value={ActivityLevel.Advanced}>Advanced</SelectItem>
+                </SelectContent>
+              </Select>
+            ) : (
+              <>
+                <div className="flex justify-between mb-2">
+                  <span className="text-sm text-white/80">Beginner</span>
+                  <span className="text-sm text-white/80">Advanced</span>
+                </div>
+                <div className="w-full h-2 bg-white/30 rounded-full">
+                  <div 
+                    className="h-full rounded-full"
+                    style={{ 
+                      background: '#ff8800',
+                      width: displayUser?.activityLevel === ActivityLevel.Beginner 
+                        ? "33%" 
+                        : displayUser?.activityLevel === ActivityLevel.Intermediate 
+                        ? "66%" 
+                        : "100%"
+                    }} 
+                  />
+                </div>
+                <div className="text-center mt-2">
+                  <Badge variant="outline" className="bg-white text-[#35179d]">
+                    {displayUser?.activityLevel || 'Not set'}
+                  </Badge>
+                </div>
+              </>
+            )}
+          </div>
+          
+          <Separator />
+          
+          {/* Sport Interests */}
+          <div className="p-6">
+            <h3 className="text-lg font-semibold mb-3 text-white">Sport Interests</h3>
+            {isEditing ? (
+              <div className="flex flex-wrap gap-2">
+                {Object.values(SportType).map(sport => (
+                  <Badge 
+                    key={sport} 
+                    className={`px-3 py-1 cursor-pointer ${
+                      selectedInterests.includes(sport) 
+                        ? "bg-fitness-primary text-white hover:bg-fitness-primary/90" 
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    } border-0`}
+                    onClick={() => toggleSportInterest(sport)}
+                  >
+                    <span className="mr-1">{getSportIcon(sport)}</span> {sport}
+                  </Badge>
+                ))}
               </div>
-            </>
-          )}
-        </div>
-        
-        <Separator />
-        
-        {/* Sport Interests */}
-        <div className="p-6">
-          <h3 className="text-lg font-semibold mb-3">Sport Interests</h3>
-          {isEditing ? (
-            <div className="flex flex-wrap gap-2">
-              {Object.values(SportType).map(sport => (
-                <Badge 
-                  key={sport} 
-                  className={`px-3 py-1 cursor-pointer ${
-                    selectedInterests.includes(sport) 
-                      ? "bg-fitness-primary text-white hover:bg-fitness-primary/90" 
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                  } border-0`}
-                  onClick={() => toggleSportInterest(sport)}
-                >
-                  <span className="mr-1">{getSportIcon(sport)}</span> {sport}
-                </Badge>
-              ))}
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {(displayUser?.interests || []).map(sport => (
+                  <Badge key={sport} className="px-3 py-1 bg-fitness-primary/10 text-fitness-primary hover:bg-fitness-primary/20 border-0">
+                    <span className="mr-1">{getSportIcon(sport)}</span> {sport}
+                  </Badge>
+                ))}
+                {(displayUser?.interests?.length || 0) === 0 && (
+                  <p className="text-white/70 text-sm">No interests selected</p>
+                )}
+              </div>
+            )}
+          </div>
+          
+          <Separator />
+          
+          {/* Statistics */}
+          <div className="grid grid-cols-3 p-6">
+            <div className="text-center">
+              <p className="text-2xl font-bold text-white">{displayUser?.joinedRooms?.length || 0}</p>
+              <p className="text-sm text-white/70">Activities</p>
             </div>
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              {(displayUser?.interests || []).map(sport => (
-                <Badge key={sport} className="px-3 py-1 bg-fitness-primary/10 text-fitness-primary hover:bg-fitness-primary/20 border-0">
-                  <span className="mr-1">{getSportIcon(sport)}</span> {sport}
-                </Badge>
-              ))}
-              {(displayUser?.interests?.length || 0) === 0 && (
-                <p className="text-gray-500 text-sm">No interests selected</p>
-              )}
+            <div className="text-center border-x border-white/20">
+              <p className="text-2xl font-bold text-white/80">--</p>
+              <p className="text-sm text-white/70">Hours</p>
             </div>
-          )}
-        </div>
-        
-        <Separator />
-        
-        {/* Statistics */}
-        <div className="grid grid-cols-3 p-6">
-          <div className="text-center">
-            <p className="text-2xl font-bold text-fitness-primary">{displayUser?.joinedRooms?.length || 0}</p>
-            <p className="text-sm text-gray-500">Activities</p>
+            <div className="text-center">
+              <p className="text-2xl font-bold text-white/80">--</p>
+              <p className="text-sm text-white/70">Friends</p>
+            </div>
           </div>
-          <div className="text-center border-x border-gray-200">
-            <p className="text-2xl font-bold text-fitness-secondary">--</p>
-            <p className="text-sm text-gray-500">Hours</p>
+          
+          <Separator />
+          
+          {/* Payment Integration Placeholder */}
+          <div className="p-6">
+            <h3 className="text-lg font-semibold mb-3 text-white">Payment Methods</h3>
+            <Button 
+              className="w-full bg-[#ff8800] text-white font-bold border-none hover:bg-orange-600"
+              onClick={() => navigate('/payment')}
+            >
+              Add Payment Method
+            </Button>
           </div>
-          <div className="text-center">
-            <p className="text-2xl font-bold text-fitness-accent">--</p>
-            <p className="text-sm text-gray-500">Friends</p>
+          
+          {/* Logout Button */}
+          <div className="p-6 pt-0">
+            <Button 
+              variant="destructive" 
+              className="w-full"
+              onClick={handleLogout}
+            >
+              Log Out
+            </Button>
           </div>
-        </div>
-        
-        <Separator />
-        
-        {/* Payment Integration Placeholder */}
-        <div className="p-6">
-          <h3 className="text-lg font-semibold mb-3">Payment Methods</h3>
-          <Button 
-            variant="outline"
-            className="w-full border-dashed"
-            onClick={() => navigate('/payment')}
-          >
-            Add Payment Method
-          </Button>
-        </div>
-        
-        {/* Logout Button */}
-        <div className="p-6 pt-0">
-          <Button 
-            variant="destructive" 
-            className="w-full"
-            onClick={handleLogout}
-          >
-            Log Out
-          </Button>
         </div>
       </div>
     </Layout>
