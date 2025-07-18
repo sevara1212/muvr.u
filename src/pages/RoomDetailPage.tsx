@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { ArrowLeft, Calendar, Clock, MapPin, Users, User, Heart, ExternalLink } from "lucide-react";
 import Layout from "@/components/Layout";
-import { formatDateTime, formatDuration, getSportIcon } from "@/lib/utils";
+import { formatDateTime, formatDuration } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { getRoomById, joinRoom, leaveRoom, getRoomParticipants } from "@/services/roomService";
@@ -67,6 +67,17 @@ const RoomDetailPage = () => {
   const participantsCount = room.participants?.length || 0;
   const isRoomFull = participantsCount >= room.maxParticipants;
   const sportLowerCase = room.sportType.toLowerCase();
+  const sportImageMap = {
+    Running: "/images/running_icon.png",
+    Yoga: "/images/yoga_icon.png",
+    Cycling: "/images/cycling_icon.png",
+    Swimming: "/images/swimming_icon.png",
+    Basketball: "/images/basketball_icon.png",
+    Football: "/images/football_icon.png",
+    Tennis: "/images/tennis_icon.png",
+    Gym: "/images/gym_icon.png",
+    Other: "/images/other_icon.png"
+  };
   
   const isUserJoined = currentUser && room.participants?.includes(currentUser.id);
   const isUserHost = currentUser && room.hostId === currentUser.id;
@@ -156,57 +167,52 @@ const RoomDetailPage = () => {
       <div className="rounded-lg overflow-hidden">
         {/* Activity Type Banner */}
         <div className={`p-4 text-center sport-${sportLowerCase}`}>
-          <span className="text-3xl">{getSportIcon(room.sportType)}</span>
-          <h2 className="text-xl font-bold mt-1">{room.sportType}</h2>
+          <span className="flex justify-center items-center mb-2">
+            <img src={sportImageMap[room.sportType]} alt={room.sportType} className="w-12 h-12 object-contain" />
+          </span>
+          <h2 className="text-xl font-bold mt-1 text-[#35179d]">{room.sportType}</h2>
         </div>
         
         {/* Activity Details */}
-        <div className="bg-white p-5 rounded-b-lg shadow-sm">
+        <div className="bg-white p-5 rounded-b-lg shadow-sm text-[#35179d]">
           <h2 className="text-2xl font-bold mb-1">{room.title}</h2>
-          
           {room.price && (
             <div className="mb-4">
               <span className="text-green-600 font-semibold">${room.price}</span>
-              <span className="text-gray-500 text-sm"> per person</span>
+              <span className="text-[#35179d] text-sm"> per person</span>
             </div>
           )}
-          
           <div className="space-y-3 mb-6">
             <div className="flex items-center">
-              <Calendar size={18} className="mr-3 text-gray-400" />
-              <span>{formatDateTime(room.dateTime)}</span>
+              <Calendar size={18} className="mr-3 text-[#35179d]" />
+              <span className="text-[#35179d]">{formatDateTime(room.dateTime)}</span>
             </div>
-            
             <div className="flex items-center">
-              <Clock size={18} className="mr-3 text-gray-400" />
-              <span>{formatDuration(room.duration)}</span>
+              <Clock size={18} className="mr-3 text-[#35179d]" />
+              <span className="text-[#35179d]">{formatDuration(room.duration)}</span>
             </div>
-            
             <div className="flex items-center">
-              <MapPin size={18} className="mr-3 text-gray-400" />
-              <span>{room.location.address}, {room.location.city}</span>
+              <MapPin size={18} className="mr-3 text-[#35179d]" />
+              <span className="text-[#35179d]">{room.location.address}, {room.location.city}</span>
             </div>
-            
             {/* Location Link */}
             <div className="flex items-center">
-              <ExternalLink size={18} className="mr-3 text-gray-400" />
+              <ExternalLink size={18} className="mr-3 text-[#35179d]" />
               <a 
                 href={getLocationLink()} 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="text-fitness-primary hover:underline flex items-center"
+                className="text-[#35179d] hover:underline flex items-center"
               >
                 View on Map
               </a>
             </div>
-            
             <div className="flex items-center">
-              <Users size={18} className="mr-3 text-gray-400" />
-              <span>{participantsCount} of {room.maxParticipants} joined</span>
+              <Users size={18} className="mr-3 text-[#35179d]" />
+              <span className="text-[#35179d]">{participantsCount} of {room.maxParticipants} joined</span>
             </div>
-            
             <div className="flex items-center">
-              <User size={18} className="mr-3 text-gray-400" />
+              <User size={18} className="mr-3 text-[#35179d]" />
               <div className="flex items-center">
                 <div className="w-7 h-7 rounded-full overflow-hidden mr-2">
                   <img 
@@ -215,22 +221,20 @@ const RoomDetailPage = () => {
                     className="w-full h-full object-cover"
                   />
                 </div>
-                <span>Hosted by {room.host?.name || "Unknown"}</span>
+                <span className="text-[#35179d]">Hosted by {room.host?.name || "Unknown"}</span>
               </div>
             </div>
           </div>
-          
           {/* Description */}
           {room.description && (
             <div className="mb-6">
-              <h3 className="text-lg font-semibold mb-2">Description</h3>
-              <p className="text-gray-700">{room.description}</p>
+              <h3 className="text-lg font-semibold mb-2 text-[#35179d]">Description</h3>
+              <p className="text-[#35179d]">{room.description}</p>
             </div>
           )}
-          
           {/* Participants */}
           <div className="mb-6">
-            <h3 className="text-lg font-semibold mb-2">Participants ({participantsCount})</h3>
+            <h3 className="text-lg font-semibold mb-2 text-[#35179d]">Participants ({participantsCount})</h3>
             <div className="flex flex-wrap gap-2">
               {participants.map(participant => (
                 <div key={participant.id} className="flex items-center bg-gray-100 rounded-full px-3 py-1">
@@ -241,11 +245,11 @@ const RoomDetailPage = () => {
                       className="w-full h-full object-cover"
                     />
                   </div>
-                  <span className="text-sm">{participant.name}</span>
+                  <span className="text-sm text-[#35179d]">{participant.name}</span>
                 </div>
               ))}
               {participants.length === 0 && (
-                <p className="text-gray-500 text-sm">No participants yet. Be the first to join!</p>
+                <p className="text-[#35179d]/60 text-sm">No participants yet. Be the first to join!</p>
               )}
             </div>
           </div>
@@ -253,13 +257,11 @@ const RoomDetailPage = () => {
           {/* Action Buttons */}
           <div className="flex space-x-3">
             <Button 
-              variant="outline" 
-              className="flex-1"
+              className="flex-1 bg-orange-500 text-white font-bold hover:bg-orange-600 border-none"
               onClick={() => navigate(-1)}
             >
               Back
             </Button>
-            
             {!isUserHost && (
               <Button 
                 className={`flex-1 ${isUserJoined ? 'bg-red-500 hover:bg-red-600' : 'bg-fitness-primary hover:bg-fitness-primary/90'}`}
@@ -273,7 +275,6 @@ const RoomDetailPage = () => {
                     : (isRoomFull ? "Activity Full" : "Join Activity"))}
               </Button>
             )}
-            
             {isUserHost && (
               <Button 
                 className="flex-1 bg-fitness-secondary hover:bg-fitness-secondary/90"
@@ -285,6 +286,7 @@ const RoomDetailPage = () => {
           </div>
         </div>
       </div>
+      {/* Removed floating + button */}
     </Layout>
   );
 };
