@@ -40,13 +40,36 @@ const ExplorePage = () => {
         setLoading(false);
       }
     };
-    fetchRooms();
-  }, [selectedCategory, sport]);
+    // Only fetch by category if search is empty
+    if (!searchQuery) {
+      fetchRooms();
+    }
+  }, [selectedCategory, sport, searchQuery]);
+
+  // Fetch all rooms and filter when searching
+  useEffect(() => {
+    const fetchAndFilter = async () => {
+      if (!searchQuery) return;
+      setLoading(true);
+      try {
+        const allRooms = await getAllRooms();
+        setRooms(allRooms);
+      } catch (error) {
+        console.error("Error fetching all rooms for search:", error);
+        toast.error("Failed to search activities");
+      } finally {
+        setLoading(false);
+      }
+    };
+    if (searchQuery) {
+      fetchAndFilter();
+    }
+  }, [searchQuery]);
 
   // Instant search (no debounce)
   const filteredRooms = rooms.filter(room => {
     const q = searchQuery.trim().toLowerCase();
-    if (!q) return true;
+    if (!q) return selectedCategory ? room.sportType === selectedCategory : true;
     const title = (room.title || "").toLowerCase();
     const desc = (room.description || "").toLowerCase();
     const city = (room.location?.city || "").toLowerCase();
