@@ -6,7 +6,7 @@ import {
   updateProfile,
   sendPasswordResetEmail,
   User as FirebaseUser,
-  onAuthStateChanged
+  onAuthStateChanged,
 } from 'firebase/auth';
 import { auth, usersCollection, doc, setDoc, getDoc } from '@/lib/firebase';
 import { User, ActivityLevel } from '@/types';
