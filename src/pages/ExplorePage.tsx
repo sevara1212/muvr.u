@@ -108,10 +108,10 @@ const ExplorePage = () => {
       <div className="flex items-center mb-4">
         <ArrowLeft 
           size={20} 
-          className="mr-3 cursor-pointer" 
+          className="mr-3 cursor-pointer text-white-force" 
           onClick={() => navigate(-1)}
         />
-        <h1 className="text-xl font-bold">Explore Activities</h1>
+        <h1 className="text-xl font-bold text-white-force">Explore Activities</h1>
       </div>
       
       {/* Search Bar */}
@@ -129,7 +129,7 @@ const ExplorePage = () => {
       
       {/* Categories */}
       <div className="mb-6">
-        <h2 className="text-lg font-semibold mb-3">Categories</h2>
+        <h2 className="text-lg font-semibold mb-3 text-white-force">Categories</h2>
         <div className="grid grid-cols-4 gap-3">
           {categories.map((cat) => (
             <div
@@ -149,7 +149,7 @@ const ExplorePage = () => {
       {/* Results */}
       <div>
         <div className="flex justify-between items-center mb-3">
-          <h2 className="text-lg font-semibold">Activities</h2>
+          <h2 className="text-lg font-semibold text-white-force">Activities</h2>
           <span className="text-sm text-gray-500">
             {loading ? "Loading..." : `${filteredRooms.length} found`}
           </span>

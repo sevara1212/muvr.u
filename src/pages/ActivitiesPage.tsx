@@ -14,27 +14,26 @@ import { toast } from "sonner";
 const ActivitiesPage = () => {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
-  const [upcomingRooms, setUpcomingRooms] = useState<Room[]>([]);
+  const [allRooms, setAllRooms] = useState<Room[]>([]);
+  const [joinedRooms, setJoinedRooms] = useState<Room[]>([]);
   const [selectedSport, setSelectedSport] = useState<string | null>(null);
   const [sportLoading, setSportLoading] = useState(false);
-  const [joinedRooms, setJoinedRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
   
   useEffect(() => {
     const fetchRooms = async () => {
       try {
         setLoading(true);
-        let allRooms: Room[] = [];
+        let fetchedRooms: Room[] = [];
+        
         if (selectedSport && selectedSport !== 'All') {
-          allRooms = await getRoomsBySport(selectedSport);
+          fetchedRooms = await getRoomsBySport(selectedSport);
         } else {
-          allRooms = await getAllRooms();
+          fetchedRooms = await getAllRooms();
         }
-        const now = new Date();
-        const upcoming = allRooms
-          .filter(room => new Date(room.dateTime) > now)
-          .sort((a, b) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime());
-        setUpcomingRooms(upcoming);
+        
+        setAllRooms(fetchedRooms);
+        
         // Get user's joined rooms if logged in
         if (currentUser) {
           const userJoined = await getJoinedRooms(currentUser.id);
@@ -47,21 +46,41 @@ const ActivitiesPage = () => {
         setLoading(false);
       }
     };
+    
     fetchRooms();
   }, [currentUser, selectedSport]);
+  
+  // Get filtered upcoming rooms
+  const getFilteredUpcomingRooms = () => {
+    const now = new Date();
+    return allRooms
+      .filter(room => new Date(room.dateTime) > now)
+      .sort((a, b) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime());
+  };
+  
+  // Get filtered joined rooms
+  const getFilteredJoinedRooms = () => {
+    if (!currentUser) return [];
+    
+    const now = new Date();
+    return joinedRooms
+      .filter(room => new Date(room.dateTime) > now)
+      .sort((a, b) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime());
+  };
   
   // Refresh rooms after join/leave actions
   const handleRoomAction = async () => {
     setLoading(true);
     try {
-      // Get all upcoming rooms
-      const allRooms = await getAllRooms();
-      const now = new Date();
-      const upcoming = allRooms
-        .filter(room => new Date(room.dateTime) > now)
-        .sort((a, b) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime());
+      let fetchedRooms: Room[] = [];
       
-      setUpcomingRooms(upcoming);
+      if (selectedSport && selectedSport !== 'All') {
+        fetchedRooms = await getRoomsBySport(selectedSport);
+      } else {
+        fetchedRooms = await getAllRooms();
+      }
+      
+      setAllRooms(fetchedRooms);
       
       // Get user's joined rooms if logged in
       if (currentUser) {
@@ -89,83 +108,107 @@ const ActivitiesPage = () => {
     setSportLoading(false);
   };
   
+  const upcomingRooms = getFilteredUpcomingRooms();
+  const filteredJoinedRooms = getFilteredJoinedRooms();
+  
   return (
     <Layout>
-      {/* Sport Type Selector */}
-      <div className="flex flex-wrap gap-1 mb-2 items-center justify-center">
-        <button
-          className={`px-2 py-1 rounded-full border text-xs font-semibold transition-all ${selectedSport === null || selectedSport === 'All' ? 'bg-[#35179d] text-white border-[#35179d]' : 'bg-white text-[#35179d] border-[#35179d]'}`}
-          onClick={() => handleSportSelect('All')}
-          disabled={sportLoading}
-        >
-          All
-        </button>
-        {Object.values(SportType).map((sport) => (
-          <button
-            key={sport}
-            className={`px-2 py-1 rounded-full border text-xs font-semibold transition-all ${selectedSport === sport ? 'bg-[#35179d] text-white border-[#35179d]' : 'bg-white text-[#35179d] border-[#35179d]'}`}
-            onClick={() => handleSportSelect(sport)}
-            disabled={sportLoading}
-          >
-            {sport}
-          </button>
-        ))}
-      </div>
       {/* Header */}
       <div className="flex items-center mb-4">
         <ArrowLeft 
           size={20} 
-          className="mr-3 cursor-pointer" 
+          className="mr-3 cursor-pointer text-white-force" 
           onClick={() => navigate(-1)}
         />
-        <h1 className="text-xl font-bold">Activities</h1>
+        <h1 className="text-xl font-bold text-white-force">Activities</h1>
+      </div>
+
+      {/* Sport Type Selector */}
+      <div className="mb-6">
+        <h2 className="text-lg font-semibold mb-3 text-white-force">Filter by Sport</h2>
+        <div className="flex flex-wrap gap-2 items-center">
+          <button
+            className={`px-4 py-2 rounded-full border-2 text-sm font-medium transition-all ${
+              selectedSport === null || selectedSport === 'All' 
+                ? 'bg-white text-[#35179d] border-white shadow-lg' 
+                : 'bg-transparent text-white border-white/50 hover:border-white'
+            }`}
+            onClick={() => handleSportSelect('All')}
+            disabled={sportLoading}
+          >
+            All Sports
+          </button>
+          {Object.values(SportType).map((sport) => (
+            <button
+              key={sport}
+              className={`px-4 py-2 rounded-full border-2 text-sm font-medium transition-all ${
+                selectedSport === sport 
+                  ? 'bg-white text-[#35179d] border-white shadow-lg' 
+                  : 'bg-transparent text-white border-white/50 hover:border-white'
+              }`}
+              onClick={() => handleSportSelect(sport)}
+              disabled={sportLoading}
+            >
+              {sport}
+            </button>
+          ))}
+        </div>
       </div>
       
       {/* Tabs */}
       <Tabs defaultValue="upcoming" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 mb-2 text-xs h-8">
-          <TabsTrigger value="upcoming" className="text-xs h-8">Upcoming</TabsTrigger>
-          <TabsTrigger value="joined" className="text-xs h-8">My Activities</TabsTrigger>
+        <TabsList className="flex w-full mb-4 bg-white/20 backdrop-blur-sm border border-white/30 rounded-xl p-1 shadow-lg">
+          <TabsTrigger 
+            value="upcoming" 
+            className="flex-1 h-12 text-sm font-semibold data-[state=active]:bg-white data-[state=active]:text-[#35179d] data-[state=active]:shadow-md text-white rounded-lg transition-all duration-200 hover:bg-white/10"
+          >
+            Upcoming
+          </TabsTrigger>
+          <TabsTrigger 
+            value="joined" 
+            className="flex-1 h-12 text-sm font-semibold data-[state=active]:bg-white data-[state=active]:text-[#35179d] data-[state=active]:shadow-md text-white rounded-lg transition-all duration-200 hover:bg-white/10"
+          >
+            My Activities
+          </TabsTrigger>
         </TabsList>
         
-        <TabsContent value="upcoming" className="space-y-2">
+        <TabsContent value="upcoming" className="space-y-4">
           {loading ? (
-            <div className="text-center py-8 text-gray-500">
+            <div className="text-center py-8 text-white-force">
               <p>Loading activities...</p>
             </div>
           ) : upcomingRooms.length > 0 ? (
             upcomingRooms.map(room => (
-              <div style={{ transform: 'scale(0.5)', transformOrigin: 'top center' }} key={room.id}>
-                <RoomCard 
-                  room={room} 
-                  onActionComplete={handleRoomAction}
-                />
-              </div>
+              <RoomCard 
+                key={room.id}
+                room={room} 
+                onActionComplete={handleRoomAction}
+              />
             ))
           ) : (
-            <div className="text-center py-8 text-gray-500">
+            <div className="text-center py-8 text-white-force">
               <p>No upcoming activities available.</p>
             </div>
           )}
         </TabsContent>
         
-        <TabsContent value="joined" className="space-y-2">
+        <TabsContent value="joined" className="space-y-4">
           {loading ? (
-            <div className="text-center py-8 text-gray-500">
+            <div className="text-center py-8 text-white-force">
               <p>Loading activities...</p>
             </div>
           ) : !currentUser ? (
-            <div className="text-center py-8 text-gray-500">
+            <div className="text-center py-8 text-white-force">
               <p>You need to log in to see your activities.</p>
               <button 
                 onClick={() => navigate('/login')}
-                className="text-fitness-primary mt-2"
+                className="text-white-force mt-2 underline"
               >
                 Log in
               </button>
             </div>
-          ) : joinedRooms.length > 0 ? (
-            joinedRooms.map(room => (
+          ) : filteredJoinedRooms.length > 0 ? (
+            filteredJoinedRooms.map(room => (
               <RoomCard 
                 key={room.id} 
                 room={room} 
@@ -173,11 +216,11 @@ const ActivitiesPage = () => {
               />
             ))
           ) : (
-            <div className="text-center py-8 text-gray-500">
+            <div className="text-center py-8 text-white-force">
               <p>You haven't joined any activities yet.</p>
               <button 
                 onClick={() => navigate('/explore')}
-                className="text-fitness-primary mt-2"
+                className="text-white-force mt-2 underline"
               >
                 Find activities to join
               </button>
