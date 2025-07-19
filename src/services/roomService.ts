@@ -265,3 +265,16 @@ export const getRoomParticipants = async (roomId: string): Promise<User[]> => {
     throw error;
   }
 }; 
+
+// Update user's sport type preference
+export const updateUserSportType = async (userId: string, sportType: string): Promise<void> => {
+  try {
+    const userRef = doc(usersCollection, userId);
+    await updateDoc(userRef, {
+      sportType: sportType
+    });
+  } catch (error) {
+    console.error("Error updating user sport type:", error);
+    throw error;
+  }
+}; 
