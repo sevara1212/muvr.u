@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Layout from "@/components/Layout";
 import RoomCard from "@/components/RoomCard";
 import SportCategoryCard from "@/components/SportCategoryCard";
@@ -16,25 +16,22 @@ const ExplorePage = () => {
   const [selectedCategory, setSelectedCategory] = useState<SportType | null>(null);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
+  const searchTimeout = useRef<NodeJS.Timeout | null>(null);
   
-  // Fetch rooms from Firebase
+  // Fetch rooms from Firebase (by category or all)
   useEffect(() => {
     const fetchRooms = async () => {
+      setLoading(true);
       try {
         let fetchedRooms: Room[];
-        
         if (sport && Object.values(SportType).includes(sport as SportType)) {
-          // If sport is provided in URL, set it as selected category
           setSelectedCategory(sport as SportType);
           fetchedRooms = await getRoomsBySport(sport);
         } else if (selectedCategory) {
-          // If category is selected but not from URL
           fetchedRooms = await getRoomsBySport(selectedCategory);
         } else {
-          // Get all rooms
           fetchedRooms = await getAllRooms();
         }
-        
         setRooms(fetchedRooms);
       } catch (error) {
         console.error("Error fetching rooms:", error);
@@ -43,18 +40,17 @@ const ExplorePage = () => {
         setLoading(false);
       }
     };
-    
     fetchRooms();
   }, [selectedCategory, sport]);
-  
-  // Filter rooms based on search query
+
+  // Instant search (no debounce)
   const filteredRooms = rooms.filter(room => {
-    const matchesQuery = !searchQuery || 
-                         room.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         room.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         room.location.city.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    return matchesQuery;
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return true;
+    const title = (room.title || "").toLowerCase();
+    const desc = (room.description || "").toLowerCase();
+    const city = (room.location?.city || "").toLowerCase();
+    return title.includes(q) || desc.includes(q) || city.includes(q);
   });
   
   const handleCategorySelect = async (category: SportType) => {
