@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { ActivityLevel, SportType } from "@/types";
+import { ActivityLevel, SportType, Gender } from "@/types";
 // import { getSportIcon } from "@/lib/utils";
 import { createRoom } from "@/services/roomService";
 import { useAuth } from "@/contexts/AuthContext";
@@ -28,6 +28,9 @@ interface CreateRoomForm {
   city: string;
   locationLink?: string;
   price?: number;
+  genderPreference?: Gender;
+  ageRangeMin?: number;
+  ageRangeMax?: number;
 }
 
 const CreateRoomPage = () => {
@@ -53,6 +56,9 @@ const CreateRoomPage = () => {
       sportType: SportType.Running,
       duration: 60,
       maxParticipants: 5,
+      genderPreference: Gender.Both,
+      ageRangeMin: 14,
+      ageRangeMax: 60,
     }
   });
   
@@ -84,7 +90,12 @@ const CreateRoomPage = () => {
           lat: 0, // Default values since we're not using maps
           lng: 0
         },
-        hostId: currentUser.id
+        hostId: currentUser.id,
+        genderPreference: data.genderPreference || Gender.Both,
+        ageRange: {
+          min: data.ageRangeMin || 14,
+          max: data.ageRangeMax || 60
+        }
       };
       if (isPaid && data.price) {
         roomData.price = data.price;
@@ -105,7 +116,7 @@ const CreateRoomPage = () => {
     return (
       <Layout>
         <div className="flex items-center justify-center h-72">
-          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-fitness-primary"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-white"></div>
         </div>
       </Layout>
     );
@@ -122,27 +133,28 @@ const CreateRoomPage = () => {
       <div className="flex items-center mb-4">
         <ArrowLeft 
           size={20} 
-          className="mr-3 cursor-pointer" 
+          className="mr-3 cursor-pointer text-white-force" 
           onClick={() => navigate(-1)}
         />
+        <h1 className="text-xl font-bold text-white-force">Create Activity</h1>
       </div>
       
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         {/* Basic Information */}
         <div className="space-y-4">
           <div>
-            <Label htmlFor="title">Activity Title</Label>
+            <Label htmlFor="title" className="text-white-force">Activity Title</Label>
             <Input
               id="title"
               placeholder="Give your activity a name"
               {...register("title", { required: "Title is required" })}
               className={`bg-white placeholder:text-gray-400 text-gray-900 ${errors.title ? "border-red-500" : ""}`}
             />
-            {errors.title && <p className="text-red-500 text-xs mt-1">{errors.title.message}</p>}
+            {errors.title && <p className="text-red-400 text-xs mt-1">{errors.title.message}</p>}
           </div>
           
           <div>
-            <Label htmlFor="description">Description</Label>
+            <Label htmlFor="description" className="text-white-force">Description</Label>
             <Textarea
               id="description"
               placeholder="Describe your activity..."
@@ -153,7 +165,7 @@ const CreateRoomPage = () => {
           </div>
           
           <div>
-            <Label>Sport Type</Label>
+            <Label className="text-white-force">Sport Type</Label>
             <div className="grid grid-cols-2 gap-3 mt-2">
               {Object.values(SportType).map((sport) => {
                 const sportImageMap = {
@@ -171,8 +183,8 @@ const CreateRoomPage = () => {
                   <button
                     type="button"
                     key={sport}
-                    className={`flex items-center justify-center gap-2 p-3 rounded-lg border w-full font-semibold text-base transition-all focus:outline-none focus:ring-2 focus:ring-[#35179d] ${
-                      selectedSport === sport ? 'bg-[#35179d] text-white border-[#35179d] shadow-lg' : 'bg-white text-[#35179d] border-gray-300'
+                    className={`flex items-center justify-center gap-2 p-3 rounded-lg border-2 w-full font-semibold text-base transition-all focus:outline-none focus:ring-2 focus:ring-white ${
+                      selectedSport === sport ? 'bg-white text-[#35179d] border-white shadow-lg' : 'bg-white/10 text-white border-white/30 hover:bg-white/20'
                     }`}
                     onClick={() => setValue("sportType", sport)}
                   >
@@ -189,32 +201,31 @@ const CreateRoomPage = () => {
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="date">Date</Label>
+              <Label htmlFor="date" className="text-white-force">Date</Label>
               <Input
                 id="date"
                 type="date"
                 {...register("date", { required: "Date is required" })}
-                className={`bg-white placeholder:text-gray-400 text-orange-500 ${errors.date ? "border-red-500" : ""}`}
-                style={{ colorScheme: 'orange' }}
+                className={`bg-white placeholder:text-gray-400 text-gray-900 ${errors.date ? "border-red-500" : ""}`}
               />
-              {errors.date && <p className="text-red-500 text-xs mt-1">{errors.date.message}</p>}
+              {errors.date && <p className="text-red-400 text-xs mt-1">{errors.date.message}</p>}
             </div>
             
             <div>
-              <Label htmlFor="time">Time</Label>
+              <Label htmlFor="time" className="text-white-force">Time</Label>
               <Input
                 id="time"
                 type="time"
                 {...register("time", { required: "Time is required" })}
                 className={`bg-white placeholder:text-gray-400 text-gray-900 ${errors.time ? "border-red-500" : ""}`}
               />
-              {errors.time && <p className="text-red-500 text-xs mt-1">{errors.time.message}</p>}
+              {errors.time && <p className="text-red-400 text-xs mt-1">{errors.time.message}</p>}
             </div>
           </div>
           
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="duration">Duration (minutes)</Label>
+              <Label htmlFor="duration" className="text-white-force">Duration (minutes)</Label>
               <Input
                 id="duration"
                 type="number"
@@ -226,11 +237,11 @@ const CreateRoomPage = () => {
                 })}
                 className={`bg-white placeholder:text-gray-400 text-gray-900 ${errors.duration ? "border-red-500" : ""}`}
               />
-              {errors.duration && <p className="text-red-500 text-xs mt-1">{errors.duration.message}</p>}
+              {errors.duration && <p className="text-red-400 text-xs mt-1">{errors.duration.message}</p>}
             </div>
             
             <div>
-              <Label htmlFor="maxParticipants">Max Participants</Label>
+              <Label htmlFor="maxParticipants" className="text-white-force">Max Participants</Label>
               <Input
                 id="maxParticipants"
                 type="number"
@@ -243,44 +254,102 @@ const CreateRoomPage = () => {
                 })}
                 className={`bg-white placeholder:text-gray-400 text-gray-900 ${errors.maxParticipants ? "border-red-500" : ""}`}
               />
-              {errors.maxParticipants && <p className="text-red-500 text-xs mt-1">{errors.maxParticipants.message}</p>}
+              {errors.maxParticipants && <p className="text-red-400 text-xs mt-1">{errors.maxParticipants.message}</p>}
             </div>
+          </div>
+        </div>
+        
+        {/* Gender and Age Preferences */}
+        <div className="space-y-4">
+          <div>
+            <Label className="text-white-force">Gender Preference</Label>
+            <div className="grid grid-cols-3 gap-2 mt-2">
+              {Object.values(Gender).map((gender) => (
+                <button
+                  type="button"
+                  key={gender}
+                  className={`px-3 py-2 rounded-lg border-2 text-sm font-medium transition-all ${
+                    watch("genderPreference") === gender 
+                      ? 'bg-white text-[#35179d] border-white shadow-lg' 
+                      : 'bg-white/10 text-white border-white/30 hover:bg-white/20'
+                  }`}
+                  onClick={() => setValue("genderPreference", gender)}
+                >
+                  {gender}
+                </button>
+              ))}
+            </div>
+          </div>
+          
+          <div>
+            <Label className="text-white-force">Age Range</Label>
+            <div className="grid grid-cols-2 gap-4 mt-2">
+              <div>
+                <Label htmlFor="ageRangeMin" className="text-white-force text-xs">Min Age</Label>
+                <Input
+                  id="ageRangeMin"
+                  type="number"
+                  min={14}
+                  max={60}
+                  {...register("ageRangeMin", { 
+                    min: { value: 14, message: "Minimum 14" },
+                    max: { value: 60, message: "Maximum 60" },
+                  })}
+                  className="bg-white placeholder:text-gray-400 text-gray-900"
+                />
+              </div>
+              <div>
+                <Label htmlFor="ageRangeMax" className="text-white-force text-xs">Max Age</Label>
+                <Input
+                  id="ageRangeMax"
+                  type="number"
+                  min={14}
+                  max={60}
+                  {...register("ageRangeMax", { 
+                    min: { value: 14, message: "Minimum 14" },
+                    max: { value: 60, message: "Maximum 60" },
+                  })}
+                  className="bg-white placeholder:text-gray-400 text-gray-900"
+                />
+              </div>
+            </div>
+            <p className="text-xs text-white/70 mt-1">Default: 14-60 years</p>
           </div>
         </div>
         
         {/* Location */}
         <div className="space-y-4">
           <div>
-            <Label htmlFor="address">Address</Label>
+            <Label htmlFor="address" className="text-white-force">Address</Label>
             <Input
               id="address"
               placeholder="Activity location"
               {...register("address", { required: "Address is required" })}
               className={`bg-white placeholder:text-gray-400 text-gray-900 ${errors.address ? "border-red-500" : ""}`}
             />
-            {errors.address && <p className="text-red-500 text-xs mt-1">{errors.address.message}</p>}
+            {errors.address && <p className="text-red-400 text-xs mt-1">{errors.address.message}</p>}
           </div>
           
           <div>
-            <Label htmlFor="city">City</Label>
+            <Label htmlFor="city" className="text-white-force">City</Label>
             <Input
               id="city"
               placeholder="City"
               {...register("city", { required: "City is required" })}
               className={`bg-white placeholder:text-gray-400 text-gray-900 ${errors.city ? "border-red-500" : ""}`}
             />
-            {errors.city && <p className="text-red-500 text-xs mt-1">{errors.city.message}</p>}
+            {errors.city && <p className="text-red-400 text-xs mt-1">{errors.city.message}</p>}
           </div>
           
           <div>
-            <Label htmlFor="locationLink">Location Link (optional)</Label>
+            <Label htmlFor="locationLink" className="text-white-force">Location Link (optional)</Label>
             <Input
               id="locationLink"
               placeholder="Google Maps or other location link"
               {...register("locationLink")}
-              className={`bg-white placeholder:text-gray-400 text-gray-900`}
+              className="bg-white placeholder:text-gray-400 text-gray-900"
             />
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-white/70 mt-1">
               Add a Google Maps link to help participants find the location
             </p>
           </div>
@@ -288,21 +357,21 @@ const CreateRoomPage = () => {
         
         {/* Payment Option */}
         <div className="space-y-2">
-          <Label>Activity Type</Label>
+          <Label className="text-white-force">Activity Type</Label>
           <RadioGroup defaultValue="free" className="flex">
             <div className="flex items-center space-x-2 mr-6">
-              <RadioGroupItem value="free" id="free" onClick={() => setIsPaid(false)} className="data-[state=checked]:border-orange-500 data-[state=checked]:bg-orange-500" />
-              <Label htmlFor="free">Free</Label>
+              <RadioGroupItem value="free" id="free" onClick={() => setIsPaid(false)} className="data-[state=checked]:border-white data-[state=checked]:bg-white" />
+              <Label htmlFor="free" className="text-white-force">Free</Label>
             </div>
             <div className="flex items-center space-x-2">
-              <RadioGroupItem value="paid" id="paid" onClick={() => setIsPaid(true)} className="data-[state=checked]:border-orange-500 data-[state=checked]:bg-orange-500" />
-              <Label htmlFor="paid">Price (uzs)</Label>
+              <RadioGroupItem value="paid" id="paid" onClick={() => setIsPaid(true)} className="data-[state=checked]:border-white data-[state=checked]:bg-white" />
+              <Label htmlFor="paid" className="text-white-force">Price (uzs)</Label>
             </div>
           </RadioGroup>
           
           {isPaid && (
             <div className="pt-3">
-              <Label htmlFor="price">Price (uzs)</Label>
+              <Label htmlFor="price" className="text-white-force">Price (uzs)</Label>
               <Input
                 id="price"
                 type="number"
@@ -312,7 +381,7 @@ const CreateRoomPage = () => {
                 {...register("price")}
                 className={`bg-white placeholder:text-gray-400 text-gray-900 ${errors.price ? "border-red-500" : ""}`}
               />
-              {errors.price && <p className="text-red-500 text-xs mt-1">{errors.price.message}</p>}
+              {errors.price && <p className="text-red-400 text-xs mt-1">{errors.price.message}</p>}
             </div>
           )}
         </div>
@@ -320,18 +389,12 @@ const CreateRoomPage = () => {
         {/* Submit Button */}
         <Button 
           type="submit" 
-          className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold" 
+          className="w-full bg-white text-[#35179d] hover:bg-gray-100 font-bold" 
           disabled={isSubmitting}
         >
           {isSubmitting ? "Creating..." : "Create Activity"}
         </Button>
       </form>
-      {/* Style for date picker selected day */}
-      <style>{`
-        input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(54%) sepia(98%) saturate(749%) hue-rotate(0deg) brightness(102%) contrast(101%); }
-        input[type="date"]::-webkit-input-placeholder { color: #a3a3a3; }
-        input[type="date"]::placeholder { color: #a3a3a3; }
-      `}</style>
     </Layout>
   );
 };

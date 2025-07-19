@@ -234,6 +234,20 @@ const ProfilePage = () => {
               Member since {displayUser?.joinedDate ? new Date(displayUser.joinedDate).toLocaleDateString() : 'N/A'}
             </p>
             
+            {/* Gender and Age Info */}
+            <div className="flex justify-center gap-4 mt-2 text-sm">
+              {displayUser?.gender && (
+                <span className="text-white/80">
+                  Gender: {displayUser.gender}
+                </span>
+              )}
+              {displayUser?.age && (
+                <span className="text-white/80">
+                  Age: {displayUser.age}
+                </span>
+              )}
+            </div>
+            
             {isEditing ? (
               <div className="mt-3">
                 <Textarea

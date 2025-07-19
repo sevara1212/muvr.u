@@ -17,7 +17,11 @@ import {
   connectFirestoreEmulator,
   enableIndexedDbPersistence,
   enableMultiTabIndexedDbPersistence,
-  CACHE_SIZE_UNLIMITED
+  CACHE_SIZE_UNLIMITED,
+  addDoc,
+  orderBy,
+  limit,
+  onSnapshot
 } from "firebase/firestore";
 import { getStorage, ref, uploadBytes, getDownloadURL, connectStorageEmulator } from "firebase/storage";
 import { firebaseConfig, firestoreRegion } from "./firebase.config";
@@ -83,7 +87,12 @@ export {
   serverTimestamp,
   ref as storageRef,
   uploadBytes,
-  getDownloadURL
+  getDownloadURL,
+  collection,
+  addDoc,
+  orderBy,
+  limit,
+  onSnapshot
 };
 
 export type { FirebaseUser }; 

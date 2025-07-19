@@ -11,9 +11,14 @@ import {
   where, 
   getDocs,
   serverTimestamp,
-  db
+  db,
+  collection,
+  addDoc,
+  orderBy,
+  limit,
+  onSnapshot
 } from "@/lib/firebase";
-import { FirebaseRoom, Room, User } from "@/types";
+import { FirebaseRoom, Room, User, JoinRequest, RequestStatus, ChatMessage } from "@/types";
 import { DocumentData } from "firebase/firestore";
 
 // Helper function to batch fetch host data
@@ -52,6 +57,8 @@ export const createRoom = async (roomData: Omit<Room, 'id' | 'participants' | 'c
       ...roomData,
       hostId: userId,
       participants: [userId], // Host is automatically a participant
+      approvedParticipants: [userId], // Host is automatically approved
+      pendingRequests: [], // Initialize empty pending requests array
       createdAt: serverTimestamp()
     };
     
@@ -94,10 +101,12 @@ export const getRoomById = async (roomId: string): Promise<Room | null> => {
       }
     }
     
-    // Return room with ID and host data
+    // Return room with ID and host data, ensuring new fields have default values
     return {
       id: roomId,
       ...roomData,
+      approvedParticipants: roomData.approvedParticipants || [roomData.hostId], // Default to host if not set
+      pendingRequests: roomData.pendingRequests || [], // Default to empty array if not set
       host
     };
   } catch (error) {
@@ -116,7 +125,12 @@ export const getAllRooms = async (): Promise<Room[]> => {
     // First, collect all room data and host IDs
     querySnapshot.forEach(doc => {
       const data = doc.data();
-      roomsData.push({ id: doc.id, ...data });
+      roomsData.push({ 
+        id: doc.id, 
+        ...data,
+        approvedParticipants: data.approvedParticipants || [data.hostId], // Default to host if not set
+        pendingRequests: data.pendingRequests || [] // Default to empty array if not set
+      });
       if (data.hostId) hostIds.push(data.hostId);
     });
     
@@ -188,7 +202,12 @@ export const getRoomsBySport = async (sportType: string): Promise<Room[]> => {
     // First, collect all room data and host IDs
     querySnapshot.forEach(doc => {
       const data = doc.data();
-      roomsData.push({ id: doc.id, ...data });
+      roomsData.push({ 
+        id: doc.id, 
+        ...data,
+        approvedParticipants: data.approvedParticipants || [data.hostId], // Default to host if not set
+        pendingRequests: data.pendingRequests || [] // Default to empty array if not set
+      });
       if (data.hostId) hostIds.push(data.hostId);
     });
     
@@ -218,7 +237,12 @@ export const getJoinedRooms = async (userId: string): Promise<Room[]> => {
     // First, collect all room data and host IDs
     querySnapshot.forEach(doc => {
       const data = doc.data();
-      roomsData.push({ id: doc.id, ...data });
+      roomsData.push({ 
+        id: doc.id, 
+        ...data,
+        approvedParticipants: data.approvedParticipants || [data.hostId], // Default to host if not set
+        pendingRequests: data.pendingRequests || [] // Default to empty array if not set
+      });
       if (data.hostId) hostIds.push(data.hostId);
     });
     
@@ -275,6 +299,260 @@ export const updateUserSportType = async (userId: string, sportType: string): Pr
     });
   } catch (error) {
     console.error("Error updating user sport type:", error);
+    throw error;
+  }
+}; 
+
+// Request to join a room
+export const requestToJoinRoom = async (roomId: string, userId: string, message?: string): Promise<string> => {
+  try {
+    // Create request document
+    const requestData = {
+      roomId,
+      userId,
+      status: RequestStatus.Pending,
+      requestedAt: serverTimestamp(), // Always set this
+      message: message || ""
+    };
+    
+    const requestRef = await addDoc(collection(db, "joinRequests"), requestData);
+    const requestId = requestRef.id;
+    
+    // Update room with pending request
+    const roomRef = doc(roomsCollection, roomId);
+    await updateDoc(roomRef, {
+      pendingRequests: arrayUnion(requestId)
+    });
+    
+    // Update user with pending request
+    const userRef = doc(usersCollection, userId);
+    await updateDoc(userRef, {
+      pendingRequests: arrayUnion(requestId)
+    });
+    
+    return requestId;
+  } catch (error) {
+    console.error("Error requesting to join room:", error);
+    throw error;
+  }
+};
+
+// Get pending requests for a room
+export const getPendingRequests = async (roomId: string): Promise<JoinRequest[]> => {
+  try {
+    let querySnapshot;
+    try {
+      // Try to query with orderBy requestedAt
+      const q = query(
+        collection(db, "joinRequests"),
+        where("roomId", "==", roomId),
+        where("status", "==", RequestStatus.Pending),
+        orderBy("requestedAt", "desc")
+      );
+      querySnapshot = await getDocs(q);
+    } catch (err) {
+      // Fallback: query without orderBy if requestedAt is missing
+      const q = query(
+        collection(db, "joinRequests"),
+        where("roomId", "==", roomId),
+        where("status", "==", RequestStatus.Pending)
+      );
+      querySnapshot = await getDocs(q);
+    }
+    const requests: JoinRequest[] = [];
+    const userIds: string[] = [];
+    
+    // Collect request data and user IDs
+    querySnapshot.forEach(doc => {
+      const data = doc.data();
+      requests.push({ id: doc.id, ...data } as JoinRequest);
+      userIds.push(data.userId);
+    });
+    
+    // Batch fetch user data
+    const usersMap = await fetchHostsData(userIds);
+    
+    // Combine request data with user data
+    return requests.map(request => ({
+      ...request,
+      user: usersMap[request.userId]
+    }));
+  } catch (error) {
+    console.error("Error getting pending requests:", error);
+    throw error;
+  }
+};
+
+// Approve or reject a join request
+export const respondToJoinRequest = async (
+  requestId: string, 
+  roomId: string, 
+  userId: string, 
+  status: RequestStatus
+): Promise<void> => {
+  try {
+    // Update request status
+    const requestRef = doc(db, "joinRequests", requestId);
+    await updateDoc(requestRef, {
+      status,
+      respondedAt: serverTimestamp()
+    });
+    
+    const roomRef = doc(roomsCollection, roomId);
+    const userRef = doc(usersCollection, userId);
+    
+    if (status === RequestStatus.Approved) {
+      // Add user to approved participants
+      await updateDoc(roomRef, {
+        approvedParticipants: arrayUnion(userId),
+        pendingRequests: arrayRemove(requestId)
+      });
+      
+      // Add room to user's joined rooms
+      await updateDoc(userRef, {
+        joinedRooms: arrayUnion(roomId),
+        pendingRequests: arrayRemove(requestId)
+      });
+    } else {
+      // Remove from pending requests
+      await updateDoc(roomRef, {
+        pendingRequests: arrayRemove(requestId)
+      });
+      
+      await updateDoc(userRef, {
+        pendingRequests: arrayRemove(requestId)
+      });
+    }
+  } catch (error) {
+    console.error("Error responding to join request:", error);
+    throw error;
+  }
+};
+
+// Send chat message
+export const sendChatMessage = async (roomId: string, userId: string, message: string): Promise<string> => {
+  try {
+    const messageData = {
+      roomId,
+      userId,
+      message,
+      timestamp: serverTimestamp()
+    };
+    
+    const messageRef = await addDoc(collection(db, "chatMessages"), messageData);
+    return messageRef.id;
+  } catch (error) {
+    console.error("Error sending chat message:", error);
+    throw error;
+  }
+};
+
+// Get chat messages for a room
+export const getChatMessages = async (roomId: string): Promise<ChatMessage[]> => {
+  try {
+    const q = query(
+      collection(db, "chatMessages"),
+      where("roomId", "==", roomId),
+      orderBy("timestamp", "asc"),
+      limit(100)
+    );
+    
+    const querySnapshot = await getDocs(q);
+    const messages: ChatMessage[] = [];
+    const userIds: string[] = [];
+    
+    // Collect message data and user IDs
+    querySnapshot.forEach(doc => {
+      const data = doc.data();
+      messages.push({ id: doc.id, ...data } as ChatMessage);
+      userIds.push(data.userId);
+    });
+    
+    // Batch fetch user data
+    const usersMap = await fetchHostsData(userIds);
+    
+    // Combine message data with user data
+    return messages.map(message => ({
+      ...message,
+      user: usersMap[message.userId]
+    }));
+  } catch (error) {
+    console.error("Error getting chat messages:", error);
+    throw error;
+  }
+};
+
+// Subscribe to chat messages in real-time
+export const subscribeToChatMessages = (
+  roomId: string, 
+  callback: (messages: ChatMessage[]) => void
+) => {
+  const q = query(
+    collection(db, "chatMessages"),
+    where("roomId", "==", roomId),
+    orderBy("timestamp", "asc")
+  );
+  
+  return onSnapshot(q, async (snapshot) => {
+    const messages: ChatMessage[] = [];
+    const userIds: string[] = [];
+    
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      messages.push({ id: doc.id, ...data } as ChatMessage);
+      userIds.push(data.userId);
+    });
+    
+    // Batch fetch user data
+    const usersMap = await fetchHostsData(userIds);
+    
+    // Combine message data with user data
+    const messagesWithUsers = messages.map(message => ({
+      ...message,
+      user: usersMap[message.userId]
+    }));
+    
+    callback(messagesWithUsers);
+  });
+}; 
+
+// Update existing rooms to include new fields (for backward compatibility)
+export const updateExistingRoomsWithNewFields = async (): Promise<void> => {
+  try {
+    console.log("Starting to update existing rooms...");
+    
+    const querySnapshot = await getDocs(roomsCollection);
+    let updatedCount = 0;
+    
+    for (const roomDoc of querySnapshot.docs) {
+      const roomData = roomDoc.data();
+      const roomId = roomDoc.id;
+      
+      // Check if room needs updating (missing new fields)
+      if (!roomData.approvedParticipants || !roomData.pendingRequests) {
+        console.log(`Updating room: ${roomId}`);
+        
+        const updates: any = {};
+        
+        // Add approvedParticipants if missing
+        if (!roomData.approvedParticipants) {
+          updates.approvedParticipants = [roomData.hostId]; // Host is automatically approved
+        }
+        
+        // Add pendingRequests if missing
+        if (!roomData.pendingRequests) {
+          updates.pendingRequests = [];
+        }
+        
+        // Update the room
+        await updateDoc(doc(roomsCollection, roomId), updates);
+        updatedCount++;
+      }
+    }
+    
+    console.log(`Updated ${updatedCount} rooms successfully!`);
+  } catch (error) {
+    console.error("Error updating existing rooms:", error);
     throw error;
   }
 }; 

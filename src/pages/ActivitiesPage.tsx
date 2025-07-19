@@ -10,6 +10,7 @@ import { getAllRooms, getJoinedRooms, updateUserSportType, getRoomsBySport } fro
 import { SportType } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { Gender } from "@/types";
 
 const ActivitiesPage = () => {
   const navigate = useNavigate();
@@ -54,7 +55,30 @@ const ActivitiesPage = () => {
   const getFilteredUpcomingRooms = () => {
     const now = new Date();
     return allRooms
-      .filter(room => new Date(room.dateTime) > now)
+      .filter(room => {
+        // Filter by date (upcoming only)
+        const isUpcoming = new Date(room.dateTime) > now;
+        
+        // Filter by gender preference if user is logged in
+        let genderMatch = true;
+        if (currentUser && room.genderPreference && room.genderPreference !== Gender.Both) {
+          if (currentUser.gender && currentUser.gender !== room.genderPreference) {
+            genderMatch = false;
+          }
+        }
+        
+        // Filter by age range if user is logged in
+        let ageMatch = true;
+        if (currentUser && room.ageRange && currentUser.age) {
+          const userAge = currentUser.age;
+          const { min, max } = room.ageRange;
+          if (userAge < min || userAge > max) {
+            ageMatch = false;
+          }
+        }
+        
+        return isUpcoming && genderMatch && ageMatch;
+      })
       .sort((a, b) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime());
   };
   
@@ -64,7 +88,30 @@ const ActivitiesPage = () => {
     
     const now = new Date();
     return joinedRooms
-      .filter(room => new Date(room.dateTime) > now)
+      .filter(room => {
+        // Filter by date (upcoming only)
+        const isUpcoming = new Date(room.dateTime) > now;
+        
+        // Filter by gender preference
+        let genderMatch = true;
+        if (room.genderPreference && room.genderPreference !== Gender.Both) {
+          if (currentUser.gender && currentUser.gender !== room.genderPreference) {
+            genderMatch = false;
+          }
+        }
+        
+        // Filter by age range
+        let ageMatch = true;
+        if (room.ageRange && currentUser.age) {
+          const userAge = currentUser.age;
+          const { min, max } = room.ageRange;
+          if (userAge < min || userAge > max) {
+            ageMatch = false;
+          }
+        }
+        
+        return isUpcoming && genderMatch && ageMatch;
+      })
       .sort((a, b) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime());
   };
   

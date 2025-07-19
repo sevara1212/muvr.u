@@ -9,7 +9,13 @@ interface AuthContextType {
   loading: boolean;
   error: string | null;
   setCurrentUser: (user: User) => void;
-  signup: (email: string, password: string, name: string) => Promise<{ success: boolean; error?: string }>;
+  signup: (
+    email: string,
+    password: string,
+    name: string,
+    gender?: string,
+    age?: number
+  ) => Promise<{ success: boolean; error?: string }>;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<{ success: boolean; error?: string }>;
   resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;

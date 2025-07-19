@@ -85,7 +85,13 @@ export function useFirebaseAuth() {
   };
 
   // Sign up with email and password
-  const signup = async (email: string, password: string, name: string) => {
+  const signup = async (
+    email: string, 
+    password: string, 
+    name: string,
+    gender?: string,
+    age?: number
+  ) => {
     setAuthState(prev => ({ ...prev, loading: true, error: null }));
     
     try {
@@ -104,7 +110,11 @@ export function useFirebaseAuth() {
         interests: [],
         activityLevel: ActivityLevel.Beginner,
         joinedDate: new Date().toISOString(),
-        joinedRooms: []
+        joinedRooms: [],
+        gender: gender || undefined,
+        age: age || undefined,
+        preferredGender: 'Both',
+        preferredAgeRange: { min: 14, max: 60 }
       };
       
       await setDoc(doc(usersCollection, firebaseUser.uid), userData);

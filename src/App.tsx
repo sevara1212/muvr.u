@@ -15,6 +15,7 @@ import PaymentPage from "./pages/PaymentPage";
 import NotFoundWithLayout from "./pages/NotFoundWithLayout";
 import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
+import ChatPage from "./pages/ChatPage";
 
 const queryClient = new QueryClient();
 
@@ -37,6 +38,7 @@ const App = () => (
             <Route path="/category/:sport" element={<ExplorePage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignupPage />} />
+            <Route path="/chat/:roomId" element={<ChatPage />} />
             <Route path="*" element={<NotFoundWithLayout />} />
           </Routes>
         </BrowserRouter>

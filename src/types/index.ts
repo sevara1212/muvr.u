@@ -1,4 +1,41 @@
 
+export enum Gender {
+  Male = "Male",
+  Female = "Female",
+  Both = "Both"
+}
+
+export interface AgeRange {
+  min: number;
+  max: number;
+}
+
+export enum RequestStatus {
+  Pending = "pending",
+  Approved = "approved",
+  Rejected = "rejected"
+}
+
+export interface JoinRequest {
+  id: string;
+  roomId: string;
+  userId: string;
+  user?: User; // Populated user data
+  status: RequestStatus;
+  requestedAt: any; // Timestamp
+  respondedAt?: any; // Timestamp when host responded
+  message?: string; // Optional message from user
+}
+
+export interface ChatMessage {
+  id: string;
+  roomId: string;
+  userId: string;
+  user?: User; // Populated user data
+  message: string;
+  timestamp: any; // Timestamp
+}
+
 export interface User {
   id: string;
   name: string;
@@ -9,6 +46,11 @@ export interface User {
   bio?: string;
   email?: string;
   joinedRooms?: string[]; // Array of room IDs the user has joined
+  gender?: Gender;
+  age?: number;
+  preferredGender?: Gender; // For activity preferences
+  preferredAgeRange?: AgeRange; // For activity preferences
+  pendingRequests?: string[]; // Array of request IDs
 }
 
 export enum ActivityLevel {
@@ -40,9 +82,13 @@ export interface Room {
   duration: number; // in minutes
   maxParticipants: number;
   participants: string[]; // Array of user IDs who have joined
+  approvedParticipants: string[]; // Array of approved user IDs
+  pendingRequests: string[]; // Array of request IDs
   description?: string;
   price?: number; // Optional for paid activities
   createdAt?: any; // Timestamp from Firebase
+  genderPreference?: Gender; // Gender preference for the activity
+  ageRange?: AgeRange; // Age range preference for the activity
 }
 
 export interface Location {

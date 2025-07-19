@@ -5,19 +5,22 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { doc, setDoc, usersCollection } from "@/lib/firebase";
-import { ActivityLevel } from "@/types";
+import { ActivityLevel, Gender } from "@/types";
 
 const SignupPage = () => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [gender, setGender] = useState<Gender | "">("");
+  const [age, setAge] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const auth = getAuth();
-  const { currentUser } = useAuth();
+  const { currentUser, signup } = useAuth();
   
   // Redirect if already logged in
   if (currentUser) {
@@ -30,30 +33,20 @@ const SignupPage = () => {
     setLoading(true);
     
     try {
-      // Create user with email and password
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-      
-      // Update profile with display name
-      await updateProfile(user, {
-        displayName: name
-      });
-      
-      // Create user document in Firestore
-      const userData = {
-        name,
+      // Use context signup method
+      const result = await signup(
         email,
-        avatar: "",
-        interests: [],
-        activityLevel: ActivityLevel.Beginner,
-        joinedDate: new Date().toISOString(),
-        joinedRooms: []
-      };
-      
-      await setDoc(doc(usersCollection, user.uid), userData);
-      
-      toast.success("Account created successfully!");
-      navigate("/");
+        password,
+        name,
+        gender || undefined,
+        age ? parseInt(age) : undefined
+      );
+      if (result.success) {
+        toast.success("Account created successfully!");
+        navigate("/");
+      } else {
+        toast.error(result.error || "Failed to create account");
+      }
     } catch (error: any) {
       toast.error(error.message || "Failed to create account");
     } finally {
@@ -81,6 +74,7 @@ const SignupPage = () => {
               className="w-full px-3 py-1.5 rounded bg-white border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#35179d] text-black placeholder-gray-400 text-sm"
             />
           </div>
+          
           <div>
             <label htmlFor="email" className="block text-xs font-medium mb-1 text-black">Email</label>
             <input
@@ -93,6 +87,7 @@ const SignupPage = () => {
               className="w-full px-3 py-1.5 rounded bg-white border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#35179d] text-black placeholder-gray-400 text-sm"
             />
           </div>
+          
           <div>
             <label htmlFor="password" className="block text-xs font-medium mb-1 text-black">Password</label>
             <input
@@ -105,6 +100,36 @@ const SignupPage = () => {
               className="w-full px-3 py-1.5 rounded bg-white border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#35179d] text-black text-sm"
             />
             <p className="text-xs text-gray-500 mt-1">Password must be at least 6 characters</p>
+          </div>
+          
+          <div>
+            <label htmlFor="gender" className="block text-xs font-medium mb-1 text-black">Gender</label>
+            <select
+              id="gender"
+              value={gender}
+              onChange={(e) => setGender(e.target.value as Gender)}
+              className="w-full px-3 py-1.5 rounded bg-white border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#35179d] text-black text-sm"
+            >
+              <option value="">Select gender</option>
+              <option value={Gender.Male}>Male</option>
+              <option value={Gender.Female}>Female</option>
+              <option value={Gender.Both}>Both</option>
+            </select>
+          </div>
+          
+          <div>
+            <label htmlFor="age" className="block text-xs font-medium mb-1 text-black">Age</label>
+            <input
+              id="age"
+              type="number"
+              placeholder="25"
+              min="14"
+              max="60"
+              value={age}
+              onChange={(e) => setAge(e.target.value)}
+              className="w-full px-3 py-1.5 rounded bg-white border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#35179d] text-black placeholder-gray-400 text-sm"
+            />
+            <p className="text-xs text-gray-500 mt-1">Age between 14-60</p>
           </div>
         </div>
         <button 
