@@ -115,59 +115,32 @@ const RoomChat = ({ roomId, isOpen, onClose }: RoomChatProps) => {
               <p className="text-sm text-gray-500">Start the conversation with your activity participants!</p>
             </div>
           ) : (
-            groupedMessages.map(({ msg, showAvatar, showName }, idx) => {
-              const isOwn = msg.userId === currentUser?.id;
-              return (
-                <div key={msg.id} className={`flex items-end gap-2 ${isOwn ? 'justify-end' : 'justify-start'}`}>
-                  {/* Avatar and name for others */}
-                  {!isOwn && showAvatar && (
-                    <div className="flex flex-col items-center mr-1">
-                      {msg.user?.avatar ? (
-                        <img src={msg.user.avatar} alt={msg.user.name} className="w-8 h-8 rounded-full object-cover border-2 border-purple-200" />
-                      ) : (
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm ${getAvatarColor(msg.userId)}`}>{getInitials(msg.user?.name)}</div>
-                      )}
-                      {showName && (
-                        <span className="text-xs text-gray-500 mt-0.5 max-w-[60px] truncate">{msg.user?.name || "Unknown"}</span>
-                      )}
-                    </div>
-                  )}
-                  {/* Message bubble */}
-                  <div className={`flex flex-col items-${isOwn ? 'end' : 'start'} max-w-[75%]`}>
-                    {isOwn && showAvatar && (
-                      <div className="flex flex-row-reverse items-center mb-0.5">
-                        {currentUser?.avatar ? (
-                          <img src={currentUser.avatar} alt="You" className="w-7 h-7 rounded-full object-cover border-2 border-purple-200 ml-1" />
-                        ) : (
-                          <div className={`w-7 h-7 rounded-full flex items-center justify-center text-white font-bold text-xs ml-1 ${getAvatarColor(currentUser?.id || "")}`}>{getInitials(currentUser?.name)}</div>
-                        )}
-                        <span className="text-xs text-gray-500 mr-1">You</span>
-                      </div>
+            groupedMessages.map(({ msg, showAvatar, showName }, idx) => (
+              <div key={msg.id} className="flex items-end gap-2 justify-start">
+                {/* Avatar and name for all messages */}
+                {showAvatar && (
+                  <div className="flex flex-col items-center mr-1">
+                    {msg.user?.avatar ? (
+                      <img src={msg.user.avatar} alt={msg.user.name} className="w-8 h-8 rounded-full object-cover border-2 border-purple-200" />
+                    ) : (
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm ${getAvatarColor(msg.userId)}`}>{getInitials(msg.user?.name)}</div>
                     )}
-                    <div
-                      className={`px-4 py-2 rounded-2xl shadow-sm mb-0.5 ${
-                        isOwn
-                          ? 'bg-gradient-to-r from-purple-600 to-purple-700 text-white self-end'
-                          : 'bg-white text-gray-900 border border-gray-200 self-start'
-                      }`}
-                    >
-                      <span className="text-sm leading-relaxed break-words whitespace-pre-line">{msg.message}</span>
-                    </div>
-                    <span className={`text-xs mt-0.5 ${isOwn ? 'text-purple-200 text-right' : 'text-gray-400 text-left'}`}>{formatTime(msg.timestamp)}</span>
+                    {showName && (
+                      <span className="text-xs text-gray-500 mt-0.5 max-w-[60px] truncate">{msg.user?.name || "Unknown"}</span>
+                    )}
                   </div>
-                  {/* Avatar for own messages (right side) */}
-                  {isOwn && showAvatar && (
-                    <div className="flex flex-col items-center ml-1">
-                      {currentUser?.avatar ? (
-                        <img src={currentUser.avatar} alt="You" className="w-8 h-8 rounded-full object-cover border-2 border-purple-200" />
-                      ) : (
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm ${getAvatarColor(currentUser?.id || "")}`}>{getInitials(currentUser?.name)}</div>
-                      )}
-                    </div>
-                  )}
+                )}
+                {/* Message bubble */}
+                <div className="flex flex-col items-start max-w-[75%]">
+                  <div
+                    className="px-4 py-2 rounded-2xl shadow-sm mb-0.5 bg-white text-gray-900 border border-gray-200"
+                  >
+                    <span className="text-sm leading-relaxed break-words whitespace-pre-line">{msg.message}</span>
+                  </div>
+                  <span className="text-xs mt-0.5 text-gray-400 text-left">{formatTime(msg.timestamp)}</span>
                 </div>
-              );
-            })
+              </div>
+            ))
           )}
         </div>
       </ScrollArea>
