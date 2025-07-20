@@ -94,8 +94,8 @@ const SignupPage = () => {
         email,
         password,
         name,
-        gender || undefined,
-        age ? parseInt(age) : undefined
+        gender || 'Other',
+        age ? parseInt(age) : 14
       );
       if (result.success) {
         toast.success("Account created successfully!");

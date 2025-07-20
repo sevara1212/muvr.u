@@ -17,7 +17,7 @@ const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
   const auth = getAuth();
-  const { currentUser, login, error: authError } = useAuth();
+  const { currentUser, login, error: authError, googleSignIn } = useAuth();
   
   // Redirect if already logged in
   if (currentUser) {
@@ -39,6 +39,23 @@ const LoginPage = () => {
       }
     } catch (error: any) {
       toast.error(error.message || "Failed to log in");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleSignup = async () => {
+    setLoading(true);
+    try {
+      const result = await googleSignIn();
+      if (result.success) {
+        toast.success("Logged in with Google!");
+        navigate("/");
+      } else {
+        toast.error(result.error || "Google login failed");
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Google login failed");
     } finally {
       setLoading(false);
     }
@@ -108,7 +125,7 @@ const LoginPage = () => {
             <span className="mx-2 text-xs text-gray-400">or</span>
             <div className="flex-grow border-t border-gray-200" />
           </div>
-          <Button type="button" variant="outline" className="w-full flex items-center justify-center gap-2 border-gray-300 hover:bg-gray-100" onClick={() => toast.info('Google sign-in coming soon!')}>
+          <Button type="button" variant="outline" className="w-full flex items-center justify-center gap-2 border-gray-300 hover:bg-gray-100" onClick={handleGoogleSignup} disabled={loading}>
             <svg className="h-5 w-5" viewBox="0 0 48 48"><g><path fill="#4285F4" d="M24 9.5c3.54 0 6.7 1.22 9.19 3.22l6.85-6.85C36.64 2.36 30.74 0 24 0 14.82 0 6.73 5.06 2.69 12.44l7.98 6.2C12.13 13.16 17.62 9.5 24 9.5z"/><path fill="#34A853" d="M46.1 24.5c0-1.64-.15-3.22-.42-4.74H24v9.04h12.42c-.54 2.92-2.18 5.39-4.65 7.06l7.18 5.59C43.91 37.36 46.1 31.36 46.1 24.5z"/><path fill="#FBBC05" d="M10.67 28.64c-1.04-3.12-1.04-6.52 0-9.64l-7.98-6.2C.64 16.36 0 20.06 0 24c0 3.94.64 7.64 2.69 11.2l7.98-6.2z"/><path fill="#EA4335" d="M24 48c6.74 0 12.64-2.24 16.85-6.1l-7.18-5.59c-2.01 1.36-4.58 2.19-7.67 2.19-6.38 0-11.87-3.66-14.33-8.94l-7.98 6.2C6.73 42.94 14.82 48 24 48z"/></g></svg>
             Continue with Google
           </Button>

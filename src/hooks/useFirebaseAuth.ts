@@ -111,8 +111,8 @@ export function useFirebaseAuth() {
         activityLevel: ActivityLevel.Beginner,
         joinedDate: new Date().toISOString(),
         joinedRooms: [],
-        gender: gender || undefined,
-        age: age || undefined,
+        gender: gender || 'Other',
+        age: typeof age === 'number' && !isNaN(age) ? age : 14,
         preferredGender: 'Both',
         preferredAgeRange: { min: 14, max: 60 }
       };
@@ -211,8 +211,8 @@ export function useFirebaseAuth() {
           activityLevel: ActivityLevel.Beginner,
           joinedDate: new Date().toISOString(),
           joinedRooms: [],
-          gender: '',
-          age: undefined,
+          gender: 'Other',
+          age: 14,
           preferredGender: 'Both',
           preferredAgeRange: { min: 14, max: 60 }
         };
