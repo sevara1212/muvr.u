@@ -245,15 +245,16 @@ const CreateRoomPage = () => {
               <Input
                 id="maxParticipants"
                 type="number"
-                min={1}
+                min={2}
                 max={50}
                 {...register("maxParticipants", { 
                   required: "Required",
-                  min: { value: 1, message: "At least 1" },
+                  min: { value: 2, message: "Minimum is 2 (you + at least one other person)" },
                   max: { value: 50, message: "Max 50" },
                 })}
                 className={`bg-white placeholder:text-gray-400 text-gray-900 ${errors.maxParticipants ? "border-red-500" : ""}`}
               />
+              <p className="text-xs text-white/70 mt-1">Minimum is 2 (yourself and at least one other participant)</p>
               {errors.maxParticipants && <p className="text-red-400 text-xs mt-1">{errors.maxParticipants.message}</p>}
             </div>
           </div>
