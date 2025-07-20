@@ -8,7 +8,7 @@ import {
   User as FirebaseUser,
   onAuthStateChanged,
 } from 'firebase/auth';
-import { auth, usersCollection, doc, setDoc, getDoc, GoogleAuthProvider, signInWithPopup } from '@/lib/firebase';
+import { auth, usersCollection, doc, setDoc, getDoc } from '@/lib/firebase';
 import { User, ActivityLevel } from '@/types';
 
 interface AuthState {
@@ -190,49 +190,6 @@ export function useFirebaseAuth() {
     }
   };
 
-  // Google sign-in
-  const googleSignIn = async () => {
-    setAuthState(prev => ({ ...prev, loading: true, error: null }));
-    try {
-      const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
-      const firebaseUser = result.user;
-      // Check if user exists in Firestore
-      const userRef = doc(usersCollection, firebaseUser.uid);
-      const userSnap = await getDoc(userRef);
-      let userData;
-      if (!userSnap.exists()) {
-        // New user, create Firestore doc
-        userData = {
-          name: firebaseUser.displayName || '',
-          email: firebaseUser.email || '',
-          avatar: firebaseUser.photoURL || '',
-          interests: [],
-          activityLevel: ActivityLevel.Beginner,
-          joinedDate: new Date().toISOString(),
-          joinedRooms: [],
-          gender: 'Other',
-          age: 14,
-          preferredGender: 'Both',
-          preferredAgeRange: { min: 14, max: 60 }
-        };
-        await setDoc(userRef, userData);
-      } else {
-        userData = userSnap.data();
-      }
-      setAuthState({
-        currentUser: { id: firebaseUser.uid, ...userData } as User,
-        firebaseUser,
-        loading: false,
-        error: null
-      });
-      return { success: true };
-    } catch (error: any) {
-      setAuthState(prev => ({ ...prev, loading: false, error: error.message || 'Google sign-in failed' }));
-      return { success: false, error: error.message };
-    }
-  };
-
   return {
     ...authState,
     setCurrentUser,
@@ -240,6 +197,5 @@ export function useFirebaseAuth() {
     login,
     logout,
     resetPassword,
-    googleSignIn
   };
 } 
