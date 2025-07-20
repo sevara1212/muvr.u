@@ -19,6 +19,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<{ success: boolean; error?: string }>;
   resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
+  googleSignIn: () => Promise<{ success: boolean; error?: string }>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -30,7 +31,8 @@ const AuthContext = createContext<AuthContextType>({
   signup: async () => ({ success: false }),
   login: async () => ({ success: false }),
   logout: async () => ({ success: false }),
-  resetPassword: async () => ({ success: false })
+  resetPassword: async () => ({ success: false }),
+  googleSignIn: async () => ({ success: false })
 });
 
 export const useAuth = () => useContext(AuthContext);

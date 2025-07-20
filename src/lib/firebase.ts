@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getAuth, onAuthStateChanged, User as FirebaseUser, connectAuthEmulator } from "firebase/auth";
+import { getAuth, onAuthStateChanged, User as FirebaseUser, connectAuthEmulator, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { 
   getFirestore, 
   collection, 
@@ -92,7 +92,9 @@ export {
   addDoc,
   orderBy,
   limit,
-  onSnapshot
+  onSnapshot,
+  GoogleAuthProvider,
+  signInWithPopup
 };
 
 export type { FirebaseUser }; 

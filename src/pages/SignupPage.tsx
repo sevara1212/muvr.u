@@ -31,6 +31,10 @@ const passwordChecks = [
     label: "At least one lowercase letter",
     test: (pwd: string) => /[a-z]/.test(pwd),
   },
+  {
+    label: "At least one special character (!@#$%^&*)",
+    test: (pwd: string) => /[!@#$%^&*]/.test(pwd),
+  },
 ];
 
 const SignupPage = () => {
@@ -44,7 +48,7 @@ const SignupPage = () => {
   const [formError, setFormError] = useState("");
   const navigate = useNavigate();
   const auth = getAuth();
-  const { currentUser, signup, error: authError } = useAuth();
+  const { currentUser, signup, error: authError, googleSignIn } = useAuth();
   
   // Redirect if already logged in
   if (currentUser) {
@@ -110,6 +114,26 @@ const SignupPage = () => {
   
   const allPasswordChecksPassed = passwordChecks.every(check => check.test(password));
 
+  const handleGoogleSignup = async () => {
+    setLoading(true);
+    setFormError("");
+    try {
+      const result = await googleSignIn();
+      if (result.success) {
+        toast.success("Signed up with Google!");
+        navigate("/");
+      } else {
+        setFormError(result.error || "Google sign up failed");
+        toast.error(result.error || "Google sign up failed");
+      }
+    } catch (error: any) {
+      setFormError(error.message || "Google sign up failed");
+      toast.error(error.message || "Google sign up failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-[#f5f6fa] to-[#e9e6f7]">
       <Card className="w-full max-w-md p-8 shadow-xl border-0">
@@ -163,42 +187,41 @@ const SignupPage = () => {
                   const passed = check.test(password);
                   return (
                     <div key={idx} className="flex items-center gap-2 text-xs">
-                      <span className={passed ? "text-green-600" : "text-red-500"}>{passed ? " 5f" : " 5d"}</span>
+                      <span className={passed ? "text-green-600" : "text-red-500"}>{passed ? "✔️" : "❌"}</span>
                       <span className={passed ? "text-green-700" : "text-gray-700"}>{check.label}</span>
                     </div>
                   );
                 })}
               </div>
             </div>
-            <div className="flex gap-3">
-              <div className="w-1/2">
-                <Label htmlFor="gender">Gender</Label>
-                <select
-                  id="gender"
-                  value={gender}
-                  onChange={(e) => setGender(e.target.value as Gender)}
-                  className="w-full px-3 py-2 rounded border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#35179d] text-black text-sm bg-white"
-                  required
-                >
-                  <option value="">Select gender</option>
-                  <option value={Gender.Male}>Male</option>
-                  <option value={Gender.Female}>Female</option>
-                  <option value="Other">Other</option>
-                </select>
-              </div>
-              <div className="w-1/2">
-                <Label htmlFor="age">Age</Label>
-                <Input
-                  id="age"
-                  type="number"
-                  placeholder="25"
-                  min="14"
-                  max="75"
-                  value={age}
-                  onChange={(e) => setAge(e.target.value)}
-                  required
-                />
-              </div>
+            <div>
+              <Label htmlFor="gender">Gender</Label>
+              <select
+                id="gender"
+                value={gender}
+                onChange={(e) => setGender(e.target.value as Gender)}
+                className="w-full px-3 py-2 rounded border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#35179d] text-black text-sm bg-white mt-1"
+                required
+              >
+                <option value="">Select gender</option>
+                <option value={Gender.Male}>Male</option>
+                <option value={Gender.Female}>Female</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div>
+              <Label htmlFor="age">Age</Label>
+              <Input
+                id="age"
+                type="number"
+                placeholder="25"
+                min="14"
+                max="75"
+                value={age}
+                onChange={(e) => setAge(e.target.value)}
+                className="w-full"
+                required
+              />
             </div>
           </div>
           <Button type="submit" className="w-full py-2 rounded bg-[#35179d] text-white font-bold text-base mt-2 hover:bg-[#2a146a] transition" disabled={loading}>
@@ -209,7 +232,7 @@ const SignupPage = () => {
             <span className="mx-2 text-xs text-gray-400">or</span>
             <div className="flex-grow border-t border-gray-200" />
           </div>
-          <Button type="button" variant="outline" className="w-full flex items-center justify-center gap-2 border-gray-300 hover:bg-gray-100" onClick={() => toast.info('Google sign-up coming soon!')}>
+          <Button type="button" variant="outline" className="w-full flex items-center justify-center gap-2 border-gray-300 hover:bg-gray-100" onClick={handleGoogleSignup} disabled={loading}>
             <svg className="h-5 w-5" viewBox="0 0 48 48"><g><path fill="#4285F4" d="M24 9.5c3.54 0 6.7 1.22 9.19 3.22l6.85-6.85C36.64 2.36 30.74 0 24 0 14.82 0 6.73 5.06 2.69 12.44l7.98 6.2C12.13 13.16 17.62 9.5 24 9.5z"/><path fill="#34A853" d="M46.1 24.5c0-1.64-.15-3.22-.42-4.74H24v9.04h12.42c-.54 2.92-2.18 5.39-4.65 7.06l7.18 5.59C43.91 37.36 46.1 31.36 46.1 24.5z"/><path fill="#FBBC05" d="M10.67 28.64c-1.04-3.12-1.04-6.52 0-9.64l-7.98-6.2C.64 16.36 0 20.06 0 24c0 3.94.64 7.64 2.69 11.2l7.98-6.2z"/><path fill="#EA4335" d="M24 48c6.74 0 12.64-2.24 16.85-6.1l-7.18-5.59c-2.01 1.36-4.58 2.19-7.67 2.19-6.38 0-11.87-3.66-14.33-8.94l-7.98 6.2C6.73 42.94 14.82 48 24 48z"/></g></svg>
             Continue with Google
           </Button>
