@@ -103,11 +103,6 @@ const LoginPage = () => {
           <Button type="submit" className="w-full py-2 rounded bg-[#35179d] text-white font-bold text-base mt-2 hover:bg-[#2a146a] transition" disabled={loading}>
             {loading ? "Logging in..." : "Login"}
           </Button>
-          <div className="flex items-center my-2">
-            <div className="flex-grow border-t border-gray-200" />
-            <span className="mx-2 text-xs text-gray-400">or</span>
-            <div className="flex-grow border-t border-gray-200" />
-          </div>
           <div className="text-center text-xs mt-3 text-gray-500">
             Don't have an account?{' '}
             <Link to="/signup" className="text-[#35179d] font-semibold hover:underline">Sign up</Link>
