@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { doc, setDoc, usersCollection } from "@/lib/firebase";
 import { ActivityLevel, Gender } from "@/types";
+import muvrLogo from '/public/images/muvr_logo.png';
 
 const strongPasswordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/;
 
@@ -43,7 +44,7 @@ const SignupPage = () => {
   const [formError, setFormError] = useState("");
   const navigate = useNavigate();
   const auth = getAuth();
-  const { currentUser, signup } = useAuth();
+  const { currentUser, signup, error: authError } = useAuth();
   
   // Redirect if already logged in
   if (currentUser) {
@@ -85,7 +86,6 @@ const SignupPage = () => {
       return;
     }
     try {
-      // Use context signup method
       const result = await signup(
         email,
         password,
@@ -111,108 +111,114 @@ const SignupPage = () => {
   const allPasswordChecksPassed = passwordChecks.every(check => check.test(password));
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-white">
-      <form onSubmit={handleSignup} className="w-full max-w-sm space-y-4">
-        <div className="text-xl font-bold text-center mb-1 text-black">Create an account</div>
-        <div className="text-center text-black mb-4 text-sm">
-          Enter your information to create an account
+    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-[#f5f6fa] to-[#e9e6f7]">
+      <Card className="w-full max-w-md p-8 shadow-xl border-0">
+        <div className="flex flex-col items-center mb-6">
+          <img src={muvrLogo} alt="Muvr Logo" className="h-14 mb-2" />
+          <div className="text-2xl font-extrabold text-[#35179d] tracking-tight">Muvr</div>
         </div>
-        {formError && <div className="text-center text-red-600 text-xs mb-2">{formError}</div>}
-        <div className="space-y-3">
-          <div>
-            <label htmlFor="name" className="block text-xs font-medium mb-1 text-black">Full Name</label>
-            <input
-              id="name"
-              type="text"
-              placeholder="John Doe"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-              className="w-full px-3 py-1.5 rounded bg-white border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#35179d] text-black placeholder-gray-400 text-sm"
-            />
+        <form onSubmit={handleSignup} className="space-y-5">
+          <div className="text-lg font-semibold text-center mb-1 text-[#35179d]">Create an account</div>
+          <div className="text-center text-gray-500 mb-4 text-sm">
+            Enter your information to create an account
           </div>
-          
-          <div>
-            <label htmlFor="email" className="block text-xs font-medium mb-1 text-black">Email</label>
-            <input
-              id="email"
-              type="email"
-              placeholder="name@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="w-full px-3 py-1.5 rounded bg-white border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#35179d] text-black placeholder-gray-400 text-sm"
-            />
-          </div>
-          
-          <div>
-            <label htmlFor="password" className="block text-xs font-medium mb-1 text-black">Password</label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={handlePasswordChange}
-              minLength={8}
-              required
-              className="w-full px-3 py-1.5 rounded bg-white border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#35179d] text-black text-sm"
-            />
-            <div className="mt-2 space-y-1">
-              {passwordChecks.map((check, idx) => {
-                const passed = check.test(password);
-                return (
-                  <div key={idx} className="flex items-center gap-2 text-xs">
-                    <span className={passed ? "text-green-600" : "text-red-500"}>{passed ? "✅" : "❌"}</span>
-                    <span className={passed ? "text-green-700" : "text-gray-700"}>{check.label}</span>
-                  </div>
-                );
-              })}
+          {(formError || authError) && (
+            <div className="text-center text-red-600 text-xs mb-2 bg-red-50 rounded p-2 border border-red-200">{formError || authError}</div>
+          )}
+          <div className="space-y-3">
+            <div>
+              <Label htmlFor="name">Full Name</Label>
+              <Input
+                id="name"
+                type="text"
+                placeholder="John Doe"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="name@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={handlePasswordChange}
+                minLength={8}
+                required
+              />
+              <div className="mt-2 space-y-1">
+                {passwordChecks.map((check, idx) => {
+                  const passed = check.test(password);
+                  return (
+                    <div key={idx} className="flex items-center gap-2 text-xs">
+                      <span className={passed ? "text-green-600" : "text-red-500"}>{passed ? " 5f" : " 5d"}</span>
+                      <span className={passed ? "text-green-700" : "text-gray-700"}>{check.label}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <div className="w-1/2">
+                <Label htmlFor="gender">Gender</Label>
+                <select
+                  id="gender"
+                  value={gender}
+                  onChange={(e) => setGender(e.target.value as Gender)}
+                  className="w-full px-3 py-2 rounded border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#35179d] text-black text-sm bg-white"
+                  required
+                >
+                  <option value="">Select gender</option>
+                  <option value={Gender.Male}>Male</option>
+                  <option value={Gender.Female}>Female</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <div className="w-1/2">
+                <Label htmlFor="age">Age</Label>
+                <Input
+                  id="age"
+                  type="number"
+                  placeholder="25"
+                  min="14"
+                  max="75"
+                  value={age}
+                  onChange={(e) => setAge(e.target.value)}
+                  required
+                />
+              </div>
             </div>
           </div>
-          
-          <div>
-            <label htmlFor="gender" className="block text-xs font-medium mb-1 text-black">Gender</label>
-            <select
-              id="gender"
-              value={gender}
-              onChange={(e) => setGender(e.target.value as Gender)}
-              className="w-full px-3 py-1.5 rounded bg-white border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#35179d] text-black text-sm"
-              required
-            >
-              <option value="">Select gender</option>
-              <option value={Gender.Male}>Male</option>
-              <option value={Gender.Female}>Female</option>
-              <option value="Other">Other</option>
-            </select>
+          <Button type="submit" className="w-full py-2 rounded bg-[#35179d] text-white font-bold text-base mt-2 hover:bg-[#2a146a] transition" disabled={loading}>
+            {loading ? "Creating account..." : "Sign up"}
+          </Button>
+          <div className="flex items-center my-2">
+            <div className="flex-grow border-t border-gray-200" />
+            <span className="mx-2 text-xs text-gray-400">or</span>
+            <div className="flex-grow border-t border-gray-200" />
           </div>
-          
-          <div>
-            <label htmlFor="age" className="block text-xs font-medium mb-1 text-black">Age</label>
-            <input
-              id="age"
-              type="number"
-              placeholder="25"
-              min="14"
-              max="75"
-              value={age}
-              onChange={(e) => setAge(e.target.value)}
-              className="w-full px-3 py-1.5 rounded bg-white border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#35179d] text-black placeholder-gray-400 text-sm"
-              required
-            />
-            <p className="text-xs text-gray-500 mt-1">Age between 14-75</p>
+          <Button type="button" variant="outline" className="w-full flex items-center justify-center gap-2 border-gray-300 hover:bg-gray-100" onClick={() => toast.info('Google sign-up coming soon!')}>
+            <svg className="h-5 w-5" viewBox="0 0 48 48"><g><path fill="#4285F4" d="M24 9.5c3.54 0 6.7 1.22 9.19 3.22l6.85-6.85C36.64 2.36 30.74 0 24 0 14.82 0 6.73 5.06 2.69 12.44l7.98 6.2C12.13 13.16 17.62 9.5 24 9.5z"/><path fill="#34A853" d="M46.1 24.5c0-1.64-.15-3.22-.42-4.74H24v9.04h12.42c-.54 2.92-2.18 5.39-4.65 7.06l7.18 5.59C43.91 37.36 46.1 31.36 46.1 24.5z"/><path fill="#FBBC05" d="M10.67 28.64c-1.04-3.12-1.04-6.52 0-9.64l-7.98-6.2C.64 16.36 0 20.06 0 24c0 3.94.64 7.64 2.69 11.2l7.98-6.2z"/><path fill="#EA4335" d="M24 48c6.74 0 12.64-2.24 16.85-6.1l-7.18-5.59c-2.01 1.36-4.58 2.19-7.67 2.19-6.38 0-11.87-3.66-14.33-8.94l-7.98 6.2C6.73 42.94 14.82 48 24 48z"/></g></svg>
+            Continue with Google
+          </Button>
+          <div className="text-center text-xs mt-3 text-gray-500">
+            Already have an account?{' '}
+            <Link to="/login" className="text-[#35179d] font-semibold hover:underline">Login</Link>
           </div>
-        </div>
-        <button 
-          type="submit" 
-          className="w-full py-1.5 rounded bg-[#35179d] text-white font-bold text-base mt-2 hover:bg-[#2a146a] transition"
-          disabled={loading || !allPasswordChecksPassed}
-        >
-          {loading ? "Signing up..." : "Sign up"}
-        </button>
-        <div className="text-center text-xs mt-3 text-black">
-          Already have an account?{' '}
-          <a href="/login" className="text-[#35179d] font-semibold hover:underline">Log in</a>
-        </div>
-      </form>
+        </form>
+      </Card>
     </div>
   );
 };
