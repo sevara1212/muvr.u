@@ -119,11 +119,11 @@ const SignupPage = () => {
     <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-[#f5f6fa] to-[#e9e6f7]">
       <div className="absolute top-6 left-6">
         <button
-          onClick={() => navigate(-1)}
+          onClick={() => navigate('/')}
           className="flex items-center gap-2 text-[#35179d] hover:text-[#2a146a] transition-colors duration-200 font-medium"
         >
           <ArrowLeft size={20} />
-          <span>Back</span>
+          <span>Back to Home</span>
         </button>
       </div>
       <Card className="w-full max-w-md p-8 shadow-xl border-0">

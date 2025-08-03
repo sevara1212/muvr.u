@@ -2,6 +2,7 @@ import { createContext, useContext, ReactNode } from "react";
 import { FirebaseUser } from "@/lib/firebase";
 import { User } from "@/types";
 import { useFirebaseAuth } from "@/hooks/useFirebaseAuth";
+import { clearUserCache } from "@/services/chatService";
 
 interface AuthContextType {
   currentUser: User | null;

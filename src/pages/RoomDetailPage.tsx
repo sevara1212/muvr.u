@@ -6,7 +6,7 @@ import Layout from "@/components/Layout";
 import { formatDateTime, formatDuration } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { getRoomById, joinRoom, leaveRoom, getRoomParticipants } from "@/services/roomService";
+import { getRoomById, joinRoom, leaveRoom, getRoomParticipants, requestToJoinRoom } from "@/services/roomService";
 import { Room, User as UserType } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -19,6 +19,7 @@ const RoomDetailPage = () => {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
+  const [hasPendingRequest, setHasPendingRequest] = useState(false);
 
   useEffect(() => {
     const fetchRoomData = async () => {
@@ -46,7 +47,7 @@ const RoomDetailPage = () => {
     return (
       <Layout>
         <div className="flex flex-col items-center justify-center h-72">
-          <p>Loading activity details...</p>
+          <p className="text-white">Loading activity details...</p>
         </div>
       </Layout>
     );
@@ -81,6 +82,30 @@ const RoomDetailPage = () => {
   
   const isUserJoined = currentUser && room.participants?.includes(currentUser.id);
   const isUserHost = currentUser && room.hostId === currentUser.id;
+  
+  // Check if user has a pending request
+  useEffect(() => {
+    if (currentUser && room) {
+      const checkPendingRequest = async () => {
+        try {
+          // Check if user has a pending request for this room
+          const userPendingRequests = currentUser.pendingRequests || [];
+          const roomPendingRequests = room.pendingRequests || [];
+          
+          // Check if there's a request that matches this room
+          const hasRequest = roomPendingRequests.some(requestId => 
+            userPendingRequests.includes(requestId)
+          );
+          
+          setHasPendingRequest(hasRequest);
+        } catch (error) {
+          console.error("Error checking pending request:", error);
+        }
+      };
+      
+      checkPendingRequest();
+    }
+  }, [currentUser, room]);
 
   const handleJoinLeave = async () => {
     if (!currentUser) {
@@ -126,6 +151,26 @@ const RoomDetailPage = () => {
     }
   };
 
+  const handleRequestJoin = async () => {
+    if (!currentUser) {
+      navigate("/login");
+      return;
+    }
+    
+    if (!id) return;
+    
+    setActionLoading(true);
+    try {
+      await requestToJoinRoom(id, currentUser.id);
+      setHasPendingRequest(true);
+      toast.success("Join request sent! Waiting for host approval.");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to send request");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const toggleFavorite = () => {
     setIsFavorite(!isFavorite);
     toast.success(isFavorite ? "Removed from favorites" : "Added to favorites");
@@ -149,15 +194,15 @@ const RoomDetailPage = () => {
         <div className="flex items-center">
           <ArrowLeft 
             size={20} 
-            className="mr-3 cursor-pointer" 
+            className="mr-3 cursor-pointer text-white" 
             onClick={() => navigate(-1)}
           />
-          <h1 className="text-xl font-bold">Activity Details</h1>
+          <h1 className="text-xl font-bold text-white">Activity Details</h1>
         </div>
         <Heart 
           size={24} 
           fill={isFavorite ? "#EF4444" : "none"} 
-          color={isFavorite ? "#EF4444" : "currentColor"} 
+          color={isFavorite ? "#EF4444" : "white"} 
           onClick={toggleFavorite}
           className="cursor-pointer"
         />
@@ -258,21 +303,29 @@ const RoomDetailPage = () => {
           <div className="flex space-x-3">
             <Button 
               className="flex-1 bg-orange-500 text-white font-bold hover:bg-orange-600 border-none"
-              onClick={() => navigate(-1)}
+              onClick={() => navigate('/')}
             >
-              Back
+              Back to Home
             </Button>
             {!isUserHost && (
               <Button 
-                className={`flex-1 ${isUserJoined ? 'bg-red-500 hover:bg-red-600' : 'bg-fitness-primary hover:bg-fitness-primary/90'}`}
+                className={`flex-1 ${
+                  isUserJoined 
+                    ? 'bg-red-500 hover:bg-red-600' 
+                    : hasPendingRequest 
+                      ? 'bg-yellow-500 hover:bg-yellow-600' 
+                      : 'bg-fitness-primary hover:bg-fitness-primary/90'
+                }`}
                 disabled={isRoomFull && !isUserJoined || actionLoading}
-                onClick={handleJoinLeave}
+                onClick={isUserJoined ? handleJoinLeave : hasPendingRequest ? () => {} : handleRequestJoin}
               >
                 {actionLoading 
                   ? "Processing..." 
                   : (isUserJoined 
                     ? "Leave Activity" 
-                    : (isRoomFull ? "Activity Full" : "Join Activity"))}
+                    : hasPendingRequest 
+                      ? "Request Sent ✓" 
+                      : (isRoomFull ? "Activity Full" : "Request to Join"))}
               </Button>
             )}
             {isUserHost && (

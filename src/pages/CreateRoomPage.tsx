@@ -104,8 +104,16 @@ const CreateRoomPage = () => {
       // Create room in Firebase
       const roomId = await createRoom(roomData, currentUser.id);
       
-      toast.success("Activity created successfully!");
-      navigate(`/room/${roomId}`);
+      // Show success notification that auto-dismisses
+      toast.success("🎉 Activity created successfully!", {
+        duration: 2000,
+        description: "Your activity is now live and ready for participants!"
+      });
+      
+      // Navigate after a short delay to let user see the success message
+      setTimeout(() => {
+        navigate(`/room/${roomId}`);
+      }, 1000);
     } catch (error: any) {
       toast.error(error.message || "Failed to create activity");
     }

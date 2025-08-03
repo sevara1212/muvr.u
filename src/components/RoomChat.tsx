@@ -1,26 +1,29 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send } from "lucide-react";
-import { sendChatMessage, subscribeToChatMessages, getRoomById } from "@/services/roomService";
+import { Send, Loader2, MessageCircle, Check, CheckCheck, RefreshCw } from "lucide-react";
+import { sendChatMessage, subscribeToChatMessages, getInitialChatMessages } from "@/services/chatService";
 import { ChatMessage, Room } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { collection, getDocs, query, where } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
+// Avatar colors for different users
 const AVATAR_COLORS = [
-  "bg-purple-400", "bg-pink-400", "bg-blue-400", "bg-green-400", "bg-yellow-400", "bg-red-400"
+  "bg-red-500", "bg-blue-500", "bg-green-500", "bg-yellow-500", 
+  "bg-purple-500", "bg-pink-500", "bg-indigo-500", "bg-teal-500"
 ];
 
 function getAvatarColor(userId: string) {
-  let hash = 0;
-  for (let i = 0; i < userId.length; i++) hash = userId.charCodeAt(i) + ((hash << 5) - hash);
-  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+  const index = userId.charCodeAt(0) % AVATAR_COLORS.length;
+  return AVATAR_COLORS[index];
 }
 
 function getInitials(name?: string) {
   if (!name) return "?";
-  return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
+  return name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
 }
 
 interface RoomChatProps {
@@ -36,40 +39,242 @@ const RoomChat = ({ roomId, isOpen, onClose }: RoomChatProps) => {
   const [sending, setSending] = useState(false);
   const [room, setRoom] = useState<Room | null>(null);
   const [roomLoading, setRoomLoading] = useState(true);
+  const [chatLoading, setChatLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [retrying, setRetrying] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<'connected' | 'connecting' | 'disconnected'>('connecting');
+  const [subscriptionEstablished, setSubscriptionEstablished] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const unsubscribeRef = useRef<(() => void) | null>(null);
+  const lastMessageRef = useRef<HTMLDivElement>(null);
+  const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Check if user is approved to chat
+  const isApproved = useMemo(() => {
+    if (!room || !currentUser) return false;
+    return room.approvedParticipants?.includes(currentUser.id) || room.hostId === currentUser.id;
+  }, [room, currentUser]);
+
+  // Auto-scroll to bottom
+  const scrollToBottom = useCallback(() => {
+    if (scrollAreaRef.current) {
+      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
+    }
+  }, []);
+
+  // Test function to check Firebase directly
+  const testFirebaseMessages = async () => {
+    try {
+      console.log("🔍 Testing Firebase for messages in room:", roomId);
+      const q = query(collection(db, "chatMessages"), where("roomId", "==", roomId));
+      const snapshot = await getDocs(q);
+      console.log("🔍 Found", snapshot.docs.length, "messages in Firebase");
+      snapshot.forEach(doc => {
+        console.log("🔍 Message:", { id: doc.id, ...doc.data() });
+      });
+      
+      if (snapshot.docs.length > 0) {
+        toast.success(`Found ${snapshot.docs.length} messages in Firebase`);
+        // If we found messages, force reload them
+        const initialMessages = await getInitialChatMessages(roomId);
+        setMessages(initialMessages);
+        setChatLoading(false);
+      } else {
+        toast.error("No messages found in Firebase");
+      }
+    } catch (error) {
+      console.error("❌ Error testing Firebase:", error);
+      toast.error("Error checking Firebase");
+    }
+  };
+
+  // Auto-check Firebase on mount
+  useEffect(() => {
+    if (isOpen && roomId && messages.length === 0) {
+      console.log("🚀 Auto-checking Firebase for messages...");
+      testFirebaseMessages();
+    }
+  }, [isOpen, roomId]);
+
+  // Load initial messages automatically
   useEffect(() => {
     if (isOpen && roomId) {
-      setRoomLoading(true);
-      getRoomById(roomId)
-        .then((r) => setRoom(r))
-        .finally(() => setRoomLoading(false));
-      unsubscribeRef.current = subscribeToChatMessages(roomId, (newMessages) => {
-        setMessages(newMessages);
-        setTimeout(() => {
-          if (scrollAreaRef.current) {
-            scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
+      setChatLoading(true);
+      setError(null);
+      setSubscriptionEstablished(false);
+      
+      console.log("🔄 Loading initial messages for room:", roomId);
+      
+      // Force immediate load of messages
+      const loadMessages = async () => {
+        try {
+          const initialMessages = await getInitialChatMessages(roomId);
+          console.log("✅ Initial messages loaded:", initialMessages.length);
+          console.log("✅ Messages state will be set to:", initialMessages);
+          
+          // Set messages immediately
+          setMessages(initialMessages);
+          setChatLoading(false);
+          
+          if (initialMessages.length === 0) {
+            console.log("No initial messages found - this is normal for new chats");
+          } else {
+            console.log("✅ Messages loaded successfully, should display now");
+            // Force re-render
+            setTimeout(() => {
+              setMessages([...initialMessages]);
+            }, 100);
           }
-        }, 100);
-      });
+          
+          setTimeout(scrollToBottom, 100);
+        } catch (err: any) {
+          console.error("❌ Error loading initial messages:", err);
+          console.error("❌ Error details:", {
+            code: err.code,
+            message: err.message,
+            stack: err.stack
+          });
+          
+          if (err.code === 'permission-denied' || err.code === 'unauthenticated') {
+            setError("Failed to load messages. Please check your connection.");
+          } else {
+            console.warn("Non-critical error loading messages:", err);
+            setMessages([]);
+          }
+          setChatLoading(false);
+        }
+      };
+      
+      // Execute immediately
+      loadMessages();
+    }
+  }, [isOpen, roomId]);
+
+  // Subscribe to real-time messages
+  useEffect(() => {
+    if (isOpen && roomId) {
+      // Small delay to ensure initial messages are loaded first
+      const subscriptionTimeout = setTimeout(() => {
+        const setupSubscription = () => {
+          setConnectionStatus('connecting');
+          setError(null);
+          
+          unsubscribeRef.current = subscribeToChatMessages(
+            roomId,
+            (newMessages) => {
+              console.log("📨 Received", newMessages.length, "messages from subscription");
+              setMessages(newMessages);
+              setError(null);
+              setConnectionStatus('connected');
+              setRetrying(false);
+              setChatLoading(false);
+              setSubscriptionEstablished(true);
+              setTimeout(scrollToBottom, 50);
+            },
+            (error: any) => {
+              console.error("Chat subscription error:", error);
+              
+              if (error.code === 'permission-denied' || error.code === 'unauthenticated') {
+                setError("Connection lost. Trying to reconnect...");
+                setRetrying(true);
+                setConnectionStatus('disconnected');
+                
+                retryTimeoutRef.current = setTimeout(() => {
+                  setRetrying(false);
+                  if (unsubscribeRef.current) {
+                    unsubscribeRef.current();
+                  }
+                  setupSubscription();
+                }, 3000);
+              } else {
+                console.warn("Non-critical chat error:", error);
+                setConnectionStatus('connected');
+              }
+            }
+          );
+        };
+
+        setupSubscription();
+      }, 500); // 500ms delay
+
       return () => {
-        if (unsubscribeRef.current) unsubscribeRef.current();
+        clearTimeout(subscriptionTimeout);
+        if (retryTimeoutRef.current) {
+          clearTimeout(retryTimeoutRef.current);
+        }
+        if (unsubscribeRef.current) {
+          unsubscribeRef.current();
+        }
       };
     }
   }, [isOpen, roomId]);
 
-  const isApproved = room && currentUser && (room.approvedParticipants?.includes(currentUser.id) || room.hostId === currentUser.id);
+  // Load room data
+  useEffect(() => {
+    if (isOpen && roomId) {
+      setRoomLoading(true);
+      import("@/services/roomService").then(({ getRoomById }) => {
+        getRoomById(roomId)
+          .then((r) => setRoom(r))
+          .finally(() => setRoomLoading(false));
+      });
+    }
+  }, [isOpen, roomId]);
 
   const handleSendMessage = async () => {
-    if (!newMessage.trim() || !currentUser || !isApproved) return;
+    if (!newMessage.trim() || !currentUser || !isApproved || sending) return;
+    
+    console.log("🚀 Starting to send message:", {
+      message: newMessage.trim(),
+      currentUser: currentUser.id,
+      isApproved,
+      sending
+    });
+    
+    const messageToSend = newMessage.trim();
+    setNewMessage("");
+    
+    // Create optimistic message for immediate display
+    const optimisticMessage: ChatMessage = {
+      id: `temp-${Date.now()}`,
+      roomId,
+      userId: currentUser.id,
+      message: messageToSend,
+      timestamp: new Date(),
+      user: currentUser,
+      status: 'sending'
+    };
+    
+    console.log("📝 Created optimistic message:", optimisticMessage);
+    
+    // Add optimistic message immediately
+    setMessages(prev => [...prev, optimisticMessage]);
+    setTimeout(scrollToBottom, 50);
+    
     try {
       setSending(true);
-      await sendChatMessage(roomId, currentUser.id, newMessage.trim());
-      setNewMessage("");
-    } catch (error) {
-      console.error("Error sending message:", error);
-      toast.error("Failed to send message");
+      console.log("📤 Calling sendChatMessage...");
+      const messageId = await sendChatMessage(roomId, currentUser.id, messageToSend);
+      console.log("✅ Message sent successfully with ID:", messageId);
+      // Message will be replaced by real message from subscription
+    } catch (error: any) {
+      console.error("❌ Error sending message:", error);
+      console.error("❌ Error details:", {
+        code: error.code,
+        message: error.message,
+        stack: error.stack
+      });
+      
+      // Remove optimistic message on error
+      setMessages(prev => prev.filter(msg => msg.id !== optimisticMessage.id));
+      
+      if (error.code === 'permission-denied') {
+        toast.error("You don't have permission to send messages in this chat");
+      } else {
+        toast.error(`Failed to send message: ${error.message || 'Unknown error'}`);
+      }
+      
+      setNewMessage(messageToSend);
     } finally {
       setSending(false);
     }
@@ -88,85 +293,282 @@ const RoomChat = ({ roomId, isOpen, onClose }: RoomChatProps) => {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
+  const formatDate = (timestamp: any) => {
+    if (!timestamp) return "";
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    
+    if (date.toDateString() === today.toDateString()) {
+      return "Today";
+    } else if (date.toDateString() === yesterday.toDateString()) {
+      return "Yesterday";
+    } else {
+      return date.toLocaleDateString();
+    }
+  };
+
+  const getMessageStatus = (message: ChatMessage) => {
+    if (message.status === 'sending') return 'sending';
+    if (message.userId === currentUser?.id) {
+      // For now, assume messages are seen after 2 seconds
+      const messageTime = message.timestamp?.toDate ? message.timestamp.toDate() : new Date(message.timestamp);
+      const timeDiff = Date.now() - messageTime.getTime();
+      return timeDiff > 2000 ? 'seen' : 'sent';
+    }
+    return 'none';
+  };
+
+  const renderMessageStatus = (status: string) => {
+    switch (status) {
+      case 'sending':
+        return <Loader2 className="h-3 w-3 animate-spin text-gray-400" />;
+      case 'sent':
+        return <Check className="h-3 w-3 text-gray-400" />;
+      case 'seen':
+        return <CheckCheck className="h-3 w-3 text-blue-500" />;
+      default:
+        return null;
+    }
+  };
+
   if (!isOpen) return null;
 
-  // Group consecutive messages from the same user
-  const groupedMessages: Array<{ msg: ChatMessage; showAvatar: boolean; showName: boolean }> = [];
-  let lastUserId = null;
-  messages.forEach((msg, idx) => {
-    const prev = messages[idx - 1];
-    const showAvatar = !prev || prev.userId !== msg.userId;
-    const showName = showAvatar;
-    groupedMessages.push({ msg, showAvatar, showName });
-    lastUserId = msg.userId;
-  });
+  // Group messages by date
+  const groupedMessages = useMemo(() => {
+    console.log("🔄 Grouping messages:", messages.length, "messages");
+    console.log("🔄 Messages state:", messages);
+    
+    const groups: Array<{
+      date: string;
+      messages: ChatMessage[];
+    }> = [];
+    
+    let currentDate = "";
+    let currentGroup: ChatMessage[] = [];
+
+    messages.forEach((msg) => {
+      const messageDate = formatDate(msg.timestamp);
+      
+      if (messageDate !== currentDate) {
+        if (currentGroup.length > 0) {
+          groups.push({ date: currentDate, messages: currentGroup });
+        }
+        currentDate = messageDate;
+        currentGroup = [];
+      }
+      
+      currentGroup.push(msg);
+    });
+
+    if (currentGroup.length > 0) {
+      groups.push({ date: currentDate, messages: currentGroup });
+    }
+
+    console.log("🔄 Grouped messages:", groups.length, "groups");
+    return groups;
+  }, [messages]);
 
   return (
-    <div className="relative h-full w-full flex flex-col bg-gradient-to-b from-purple-50 via-white to-white">
+    <div className="relative h-full w-full flex flex-col bg-gray-100">
+      {/* Participants Header */}
+      {room && (
+        <div className="bg-white border-b border-gray-200 px-4 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="flex -space-x-2">
+                {room.participants?.slice(0, 3).map((participantId, index) => {
+                  const participant = messages.find(m => m.userId === participantId)?.user;
+                  return (
+                    <div
+                      key={participantId}
+                      className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-medium border-2 border-white ${getAvatarColor(participantId)}`}
+                      title={participant?.name || `Participant ${index + 1}`}
+                    >
+                      {getInitials(participant?.name)}
+                    </div>
+                  );
+                })}
+                {room.participants && room.participants.length > 3 && (
+                  <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center text-gray-600 text-xs font-medium border-2 border-white">
+                    +{room.participants.length - 3}
+                  </div>
+                )}
+              </div>
+              <div>
+                <h3 className="font-medium text-gray-900">{room.title}</h3>
+                <p className="text-sm text-gray-500">{room.participants?.length || 0} participants</p>
+              </div>
+            </div>
+            {/* Debug button */}
+            <button
+              onClick={testFirebaseMessages}
+              className="p-2 text-xs bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+              title="Test Firebase Messages"
+            >
+              <RefreshCw className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Messages */}
-      <ScrollArea className="flex-1 px-2 py-4 overflow-y-auto" ref={scrollAreaRef}>
-        <div className="flex flex-col gap-2 max-w-2xl mx-auto">
-          {messages.length === 0 ? (
+      <ScrollArea className="flex-1 px-4 py-4" ref={scrollAreaRef}>
+        <div className="flex flex-col gap-4 max-w-4xl mx-auto">
+          {chatLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="flex flex-col items-center gap-3">
+                <Loader2 className="h-8 w-8 text-purple-500 animate-spin" />
+                <p className="text-gray-500 text-sm">Loading messages...</p>
+              </div>
+            </div>
+          ) : error && !subscriptionEstablished ? (
+            <div className="text-center py-8">
+              <div className="p-4 bg-red-50 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                <MessageCircle className="h-8 w-8 text-red-400" />
+              </div>
+              <h4 className="font-medium text-gray-900 mb-2">Connection Error</h4>
+              <p className="text-sm text-gray-500 mb-4">{error}</p>
+              {retrying && (
+                <div className="flex items-center justify-center gap-2 text-sm text-gray-600">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Reconnecting...</span>
+                </div>
+              )}
+              <button
+                onClick={() => {
+                  setError(null);
+                  setChatLoading(true);
+                  getInitialChatMessages(roomId)
+                    .then((initialMessages) => {
+                      setMessages(initialMessages);
+                      setChatLoading(false);
+                    })
+                    .catch(() => {
+                      setError("Failed to reconnect. Please refresh the page.");
+                      setChatLoading(false);
+                    });
+                }}
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm"
+                disabled={retrying}
+              >
+                {retrying ? "Reconnecting..." : "Retry Connection"}
+              </button>
+            </div>
+          ) : messages.length === 0 ? (
             <div className="text-center py-12">
               <div className="p-4 bg-purple-50 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                <Send className="h-8 w-8 text-purple-400" />
+                <MessageCircle className="h-8 w-8 text-purple-400" />
               </div>
               <h4 className="font-medium text-gray-900 mb-2">No messages yet</h4>
               <p className="text-sm text-gray-500">Start the conversation with your activity participants!</p>
+              <button
+                onClick={testFirebaseMessages}
+                className="mt-4 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm"
+              >
+                Check Firebase for Messages
+              </button>
             </div>
           ) : (
-            groupedMessages.map(({ msg, showAvatar, showName }, idx) => (
-              <div key={msg.id} className="flex items-end gap-2 justify-start">
-                {/* Avatar and name for all messages */}
-                {showAvatar && (
-                  <div className="flex flex-col items-center mr-1">
-                    {msg.user?.avatar ? (
-                      <img src={msg.user.avatar} alt={msg.user.name} className="w-8 h-8 rounded-full object-cover border-2 border-purple-200" />
-                    ) : (
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm ${getAvatarColor(msg.userId)}`}>{getInitials(msg.user?.name)}</div>
-                    )}
-                    {showName && (
-                      <span className="text-xs text-gray-500 mt-0.5 max-w-[60px] truncate">{msg.user?.name || "Unknown"}</span>
-                    )}
+            groupedMessages.map(({ date, messages: dayMessages }, groupIdx) => (
+              <div key={groupIdx} className="space-y-3">
+                {/* Date separator */}
+                <div className="flex items-center justify-center">
+                  <div className="bg-white px-3 py-1 rounded-full text-xs text-gray-500 font-medium shadow-sm">
+                    {date}
                   </div>
-                )}
-                {/* Message bubble */}
-                <div className="flex flex-col items-start max-w-[75%]">
-                  <div
-                    className="px-4 py-2 rounded-2xl shadow-sm mb-0.5 bg-white text-gray-900 border border-gray-200"
-                  >
-                    <span className="text-sm leading-relaxed break-words whitespace-pre-line">{msg.message}</span>
-                  </div>
-                  <span className="text-xs mt-0.5 text-gray-400 text-left">{formatTime(msg.timestamp)}</span>
                 </div>
+                
+                {/* Messages for this date */}
+                {dayMessages.map((msg, idx) => {
+                  const isOwnMessage = msg.userId === currentUser?.id;
+                  const status = getMessageStatus(msg);
+                  
+                  return (
+                    <div key={msg.id} className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}>
+                      <div className={`flex items-end gap-2 max-w-[70%] ${isOwnMessage ? 'flex-row-reverse' : 'flex-row'}`}>
+                        {/* Avatar - show for all messages */}
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-medium flex-shrink-0 ${getAvatarColor(msg.userId)}`}>
+                          {getInitials(msg.user?.name)}
+                        </div>
+                        
+                        {/* Message bubble */}
+                        <div className={`flex flex-col ${isOwnMessage ? 'items-end' : 'items-start'}`}>
+                          {/* Sender name - show for all messages */}
+                          {msg.user?.name && (
+                            <span className={`text-xs text-gray-500 mb-1 px-2 ${isOwnMessage ? 'text-right' : 'text-left'}`}>
+                              {isOwnMessage ? 'You' : msg.user.name}
+                            </span>
+                          )}
+                          
+                          {/* Message content */}
+                          <div className={`px-4 py-2 rounded-2xl shadow-sm max-w-full ${
+                            isOwnMessage 
+                              ? 'bg-[#35179d] text-white rounded-br-md' 
+                              : 'bg-white text-gray-900 rounded-bl-md border border-gray-200'
+                          }`}>
+                            <span className="text-sm leading-relaxed break-words whitespace-pre-line">
+                              {msg.message}
+                            </span>
+                          </div>
+                          
+                          {/* Time and status */}
+                          <div className={`flex items-center gap-1 mt-1 px-2 ${isOwnMessage ? 'flex-row-reverse' : 'flex-row'}`}>
+                            <span className="text-xs text-gray-400">
+                              {formatTime(msg.timestamp)}
+                            </span>
+                            {isOwnMessage && renderMessageStatus(status)}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             ))
           )}
+          
+          <div ref={lastMessageRef} />
         </div>
       </ScrollArea>
+
+      {/* Connection Status */}
+      {connectionStatus !== 'connected' && (
+        <div className="sticky bottom-0 left-0 right-0 bg-yellow-50 border-t border-yellow-200 p-2 z-20">
+          <div className="flex items-center justify-center gap-2 text-sm text-yellow-800 max-w-4xl mx-auto">
+            <div className={`w-2 h-2 rounded-full ${connectionStatus === 'connecting' ? 'bg-yellow-500 animate-pulse' : 'bg-red-500'}`}></div>
+            <span>
+              {connectionStatus === 'connecting' ? 'Connecting...' : 'Connection lost'}
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Message Input */}
-      <div className="sticky bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-3 z-10">
-        <div className="flex gap-3 items-end max-w-2xl mx-auto">
+      <div className="sticky bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 z-10">
+        <div className="flex gap-3 items-end max-w-4xl mx-auto">
           <Input
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
             onKeyPress={handleKeyPress}
             placeholder={roomLoading ? "Loading chat permissions..." : isApproved ? "Type your message..." : "You must be approved to chat"}
-            className="flex-1 border-gray-200 focus:border-purple-300 focus:ring-purple-200 rounded-full"
+            className="flex-1 border-gray-300 focus:border-[#35179d] focus:ring-[#35179d]/20 rounded-full px-4 py-3 text-sm"
             disabled={sending || !isApproved || roomLoading}
             autoFocus
           />
           <Button
             onClick={handleSendMessage}
             disabled={!newMessage.trim() || sending || !isApproved || roomLoading}
-            size="sm"
-            className="bg-purple-600 hover:bg-purple-700 rounded-full p-3 h-10 w-10 flex-shrink-0 shadow-md"
+            className="bg-[#35179d] hover:bg-[#2a146a] rounded-full p-3 h-12 w-12 flex-shrink-0 shadow-md transition-all duration-200 disabled:opacity-50"
           >
-            <Send className="h-4 w-4" />
+            {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </Button>
         </div>
         {!roomLoading && !isApproved && (
-          <div className="text-center text-xs text-gray-500 mt-2">You must be approved by the host to send messages in this chat.</div>
+          <div className="text-center text-xs text-gray-500 mt-2 max-w-4xl mx-auto">
+            You must be approved by the host to send messages in this chat.
+          </div>
         )}
       </div>
     </div>

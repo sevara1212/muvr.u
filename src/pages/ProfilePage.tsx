@@ -156,10 +156,10 @@ const ProfilePage = () => {
           <div className="flex items-center">
             <ArrowLeft 
               size={20} 
-              className="mr-3 cursor-pointer" 
+              className="mr-3 cursor-pointer text-white" 
               onClick={() => navigate(-1)}
             />
-            <h1 className="text-xl font-bold">Profile</h1>
+            <h1 className="text-xl font-bold text-white">Profile</h1>
           </div>
           {isEditing ? (
             <div className="flex gap-2">
@@ -325,7 +325,7 @@ const ProfilePage = () => {
                     className={`px-3 py-1 cursor-pointer ${
                       selectedInterests.includes(sport) 
                         ? "bg-fitness-primary text-white hover:bg-fitness-primary/90" 
-                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        : "bg-white/20 text-white hover:bg-white/30"
                     } border-0`}
                     onClick={() => toggleSportInterest(sport)}
                   >

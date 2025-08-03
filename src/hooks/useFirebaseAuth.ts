@@ -10,6 +10,7 @@ import {
 } from 'firebase/auth';
 import { auth, usersCollection, doc, setDoc, getDoc } from '@/lib/firebase';
 import { User, ActivityLevel } from '@/types';
+import { clearUserCache } from '@/services/chatService';
 
 interface AuthState {
   currentUser: User | null;
@@ -161,6 +162,8 @@ export function useFirebaseAuth() {
     
     try {
       await signOut(auth);
+      // Clear chat user cache on logout
+      clearUserCache();
       return { success: true };
     } catch (error: any) {
       setAuthState(prev => ({ 

@@ -34,6 +34,7 @@ export interface ChatMessage {
   user?: User; // Populated user data
   message: string;
   timestamp: any; // Timestamp
+  status?: 'sending' | 'sent' | 'seen'; // Message status for read receipts
 }
 
 export interface User {

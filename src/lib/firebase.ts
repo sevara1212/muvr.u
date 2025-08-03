@@ -21,7 +21,9 @@ import {
   addDoc,
   orderBy,
   limit,
-  onSnapshot
+  onSnapshot,
+  startAfter,
+  DocumentSnapshot
 } from "firebase/firestore";
 import { getStorage, ref, uploadBytes, getDownloadURL, connectStorageEmulator } from "firebase/storage";
 import { firebaseConfig, firestoreRegion } from "./firebase.config";
@@ -93,6 +95,8 @@ export {
   orderBy,
   limit,
   onSnapshot,
+  startAfter,
+  DocumentSnapshot,
   GoogleAuthProvider,
   signInWithPopup
 };
