@@ -62,7 +62,7 @@ const RoomChat = ({ roomId, isOpen, onClose }: RoomChatProps) => {
     }
   }, []);
 
-  // Test function to check Firebase directly
+    // Test function to check Firebase directly (silent version)
   const testFirebaseMessages = async () => {
     try {
       console.log("🔍 Testing Firebase for messages in room:", roomId);
@@ -72,23 +72,19 @@ const RoomChat = ({ roomId, isOpen, onClose }: RoomChatProps) => {
       snapshot.forEach(doc => {
         console.log("🔍 Message:", { id: doc.id, ...doc.data() });
       });
-      
+
       if (snapshot.docs.length > 0) {
-        toast.success(`Found ${snapshot.docs.length} messages in Firebase`);
-        // If we found messages, force reload them
+        // If we found messages, force reload them silently
         const initialMessages = await getInitialChatMessages(roomId);
         setMessages(initialMessages);
         setChatLoading(false);
-      } else {
-        toast.error("No messages found in Firebase");
       }
     } catch (error) {
       console.error("❌ Error testing Firebase:", error);
-      toast.error("Error checking Firebase");
     }
   };
 
-  // Auto-check Firebase on mount
+  // Auto-check Firebase on mount (silent)
   useEffect(() => {
     if (isOpen && roomId && messages.length === 0) {
       console.log("🚀 Auto-checking Firebase for messages...");
@@ -399,18 +395,10 @@ const RoomChat = ({ roomId, isOpen, onClose }: RoomChatProps) => {
               <div>
                 <h3 className="font-medium text-gray-900">{room.title}</h3>
                 <p className="text-sm text-gray-500">{room.participants?.length || 0} participants</p>
-              </div>
-            </div>
-            {/* Debug button */}
-            <button
-              onClick={testFirebaseMessages}
-              className="p-2 text-xs bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
-              title="Test Firebase Messages"
-            >
-              <RefreshCw className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
+                                 </div>
+                 </div>
+               </div>
+             </div>
       )}
 
       {/* Messages */}
@@ -463,12 +451,6 @@ const RoomChat = ({ roomId, isOpen, onClose }: RoomChatProps) => {
               </div>
               <h4 className="font-medium text-gray-900 mb-2">No messages yet</h4>
               <p className="text-sm text-gray-500">Start the conversation with your activity participants!</p>
-              <button
-                onClick={testFirebaseMessages}
-                className="mt-4 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm"
-              >
-                Check Firebase for Messages
-              </button>
             </div>
           ) : (
             groupedMessages.map(({ date, messages: dayMessages }, groupIdx) => (

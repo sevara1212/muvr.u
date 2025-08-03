@@ -1,18 +1,18 @@
 import { initializeApp } from "firebase/app";
 import { getAuth, onAuthStateChanged, User as FirebaseUser, connectAuthEmulator, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
-import { 
-  getFirestore, 
-  collection, 
-  doc, 
-  setDoc, 
-  getDoc, 
-  updateDoc, 
-  arrayUnion, 
-  arrayRemove, 
-  query, 
-  where, 
-  getDocs, 
-  Timestamp, 
+import {
+  getFirestore,
+  collection,
+  doc,
+  setDoc,
+  getDoc,
+  updateDoc,
+  arrayUnion,
+  arrayRemove,
+  query,
+  where,
+  getDocs,
+  Timestamp,
   serverTimestamp,
   connectFirestoreEmulator,
   enableIndexedDbPersistence,
@@ -23,7 +23,8 @@ import {
   limit,
   onSnapshot,
   startAfter,
-  DocumentSnapshot
+  DocumentSnapshot,
+  deleteDoc
 } from "firebase/firestore";
 import { getStorage, ref, uploadBytes, getDownloadURL, connectStorageEmulator } from "firebase/storage";
 import { firebaseConfig, firestoreRegion } from "./firebase.config";
@@ -97,6 +98,7 @@ export {
   onSnapshot,
   startAfter,
   DocumentSnapshot,
+  deleteDoc,
   GoogleAuthProvider,
   signInWithPopup
 };

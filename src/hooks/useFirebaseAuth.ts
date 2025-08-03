@@ -8,9 +8,10 @@ import {
   User as FirebaseUser,
   onAuthStateChanged,
 } from 'firebase/auth';
-import { auth, usersCollection, doc, setDoc, getDoc } from '@/lib/firebase';
-import { User, ActivityLevel } from '@/types';
+import { auth, usersCollection, doc, setDoc, getDoc, collection, query, where, getDocs, deleteDoc, db } from '@/lib/firebase';
+import { User, ActivityLevel, RequestStatus } from '@/types';
 import { clearUserCache } from '@/services/chatService';
+import { toast } from 'sonner';
 
 interface AuthState {
   currentUser: User | null;
@@ -27,6 +28,31 @@ export function useFirebaseAuth() {
     error: null
   });
 
+  // Check for approved requests and show notification
+  const checkApprovedRequests = async (userId: string) => {
+    try {
+      const q = query(
+        collection(db, "joinRequests"),
+        where("userId", "==", userId),
+        where("status", "==", RequestStatus.Approved)
+      );
+      const snapshot = await getDocs(q);
+      
+      if (!snapshot.empty) {
+        // Show notification for approved requests
+        toast.success("🎉 Your join request has been approved!");
+        
+        // Delete the approved request from Firebase
+        const deletePromises = snapshot.docs.map(doc => 
+          deleteDoc(doc.ref)
+        );
+        await Promise.all(deletePromises);
+      }
+    } catch (error) {
+      console.error("Error checking approved requests:", error);
+    }
+  };
+
   // Listen for Firebase auth state changes
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -39,12 +65,17 @@ export function useFirebaseAuth() {
           if (userSnap.exists()) {
             // User exists in Firestore
             const userData = userSnap.data();
+            const currentUser = { id: firebaseUser.uid, ...userData } as User;
+            
             setAuthState({
-              currentUser: { id: firebaseUser.uid, ...userData } as User,
+              currentUser,
               firebaseUser,
               loading: false,
               error: null
             });
+            
+            // Check for approved requests after user is loaded
+            checkApprovedRequests(firebaseUser.uid);
           } else {
             // User doesn't exist in Firestore yet (should only happen if auth was created outside our app)
             setAuthState({

@@ -313,10 +313,10 @@ const RoomDetailPage = () => {
                   isUserJoined 
                     ? 'bg-red-500 hover:bg-red-600' 
                     : hasPendingRequest 
-                      ? 'bg-yellow-500 hover:bg-yellow-600' 
+                      ? 'bg-gray-400 hover:bg-gray-500 cursor-not-allowed' 
                       : 'bg-fitness-primary hover:bg-fitness-primary/90'
                 }`}
-                disabled={isRoomFull && !isUserJoined || actionLoading}
+                disabled={isRoomFull && !isUserJoined || actionLoading || hasPendingRequest}
                 onClick={isUserJoined ? handleJoinLeave : hasPendingRequest ? () => {} : handleRequestJoin}
               >
                 {actionLoading 
