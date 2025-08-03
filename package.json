@@ -12,6 +12,7 @@
     "test:firebase": "tsx src/firebase-test.ts",
     "init:firebase": "tsx src/scripts/init-firebase-data.ts",
     "setup-db": "tsx src/scripts/setup-firebase-database.ts",
+    "upload-data": "tsx src/scripts/upload-data-to-firebase.ts",
     "emulator": "firebase emulators:start"
   },
   "dependencies": {

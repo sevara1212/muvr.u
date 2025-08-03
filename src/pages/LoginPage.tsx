@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, ArrowLeft } from 'lucide-react';
 import muvrLogo from '/public/images/muvr_logo.png';
 
 const LoginPage = () => {
@@ -46,6 +46,15 @@ const LoginPage = () => {
   
   return (
     <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-[#f5f6fa] to-[#e9e6f7]">
+      <div className="absolute top-6 left-6">
+        <button
+          onClick={() => navigate(-1)}
+          className="flex items-center gap-2 text-[#35179d] hover:text-[#2a146a] transition-colors duration-200 font-medium"
+        >
+          <ArrowLeft size={20} />
+          <span>Back</span>
+        </button>
+      </div>
       <Card className="w-full max-w-md p-8 shadow-xl border-0">
         <div className="flex flex-col items-center mb-6">
           <img src={muvrLogo} alt="Muvr Logo" className="h-14 mb-2" />
