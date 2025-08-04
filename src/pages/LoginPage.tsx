@@ -52,7 +52,7 @@ const LoginPage = () => {
           className="flex items-center gap-2 text-[#35179d] hover:text-[#2a146a] transition-colors duration-200 font-medium"
         >
           <ArrowLeft size={20} />
-          <span>Back to Home</span>
+          <span>Back</span>
         </button>
       </div>
       <Card className="w-full max-w-md p-8 shadow-xl border-0">
