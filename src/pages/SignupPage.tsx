@@ -12,6 +12,7 @@ import { doc, setDoc, usersCollection } from "@/lib/firebase";
 import { ActivityLevel, Gender } from "@/types";
 import { ArrowLeft } from 'lucide-react';
 import muvrLogo from '/public/images/muvr_logo.png';
+import { resetTelegramViewport } from "@/utils/telegramViewport";
 
 const strongPasswordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/;
 
@@ -124,6 +125,9 @@ const SignupPage = () => {
       if (result.success) {
         toast.success("Account created successfully!");
         console.log('✅ Signup successful, navigating to home...');
+        
+        // Reset viewport for Telegram Mini App before navigation
+        resetTelegramViewport();
         
         // Force navigation to home page
         setTimeout(() => {
