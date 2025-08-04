@@ -2,56 +2,8 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>muvr.u</title>
-    
-    <!-- Telegram Mini App Viewport Fix -->
-    <script>
-      // Fix viewport scaling issues in Telegram Mini Apps
-      (function() {
-        // Check if we're in Telegram WebView
-        const isTelegram = window.Telegram && window.Telegram.WebView;
-        
-        if (isTelegram) {
-          // Force viewport reset on page load
-          const resetViewport = () => {
-            const viewport = document.querySelector('meta[name="viewport"]');
-            if (viewport) {
-              viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover');
-            }
-            
-            // Force zoom reset
-            document.body.style.zoom = '1';
-            document.body.style.transform = 'scale(1)';
-            document.body.style.transformOrigin = 'top left';
-          };
-          
-          // Reset on load
-          if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', resetViewport);
-          } else {
-            resetViewport();
-          }
-          
-          // Reset on navigation (for SPA)
-          let currentUrl = window.location.href;
-          const observer = new MutationObserver(() => {
-            if (window.location.href !== currentUrl) {
-              currentUrl = window.location.href;
-              setTimeout(resetViewport, 100);
-            }
-          });
-          
-          observer.observe(document.body, {
-            childList: true,
-            subtree: true
-          });
-          
-          // Also reset on window resize
-          window.addEventListener('resize', resetViewport);
-        }
-      })();
-    </script>
     <meta name="description" content="Lovable Generated Project" />
     <meta name="author" content="Lovable" />
 

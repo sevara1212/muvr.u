@@ -46,31 +46,6 @@
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
-  
-  /* Telegram Mini App Viewport Fixes */
-  @media screen and (max-width: 480px) {
-    html, body {
-      /* Prevent zooming and scaling issues */
-      -webkit-text-size-adjust: 100%;
-      -ms-text-size-adjust: 100%;
-      text-size-adjust: 100%;
-      
-      /* Force proper scaling */
-      transform: scale(1);
-      transform-origin: top left;
-    }
-  }
-  
-  /* Additional fixes for Telegram WebView */
-  body {
-    /* Prevent unwanted zooming */
-    touch-action: manipulation;
-    
-    /* Ensure proper viewport handling */
-    min-height: 100vh;
-    width: 100%;
-    overflow-x: hidden;
-  }
 
   /* Custom styles for our fitness app */
   .activity-card {
