@@ -17,26 +17,59 @@ import {
   addDoc,
   orderBy,
   limit,
-  onSnapshot
+  onSnapshot,
+  startAfter
 } from "@/lib/firebase";
 import { FirebaseRoom, Room, User, JoinRequest, RequestStatus, ChatMessage } from "@/types";
 import { DocumentData } from "firebase/firestore";
 
-// Helper function to batch fetch host data
+// Cache for activities and hosts data
+const activitiesCache = new Map<string, Room[]>();
+const hostsCache = new Map<string, User>();
+const cacheExpiry = new Map<string, number>();
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+// Helper function to check if cache is valid
+const isCacheValid = (key: string): boolean => {
+  const expiry = cacheExpiry.get(key);
+  return expiry ? Date.now() < expiry : false;
+};
+
+// Helper function to set cache with expiry
+const setCache = (key: string, data: any) => {
+  activitiesCache.set(key, data);
+  cacheExpiry.set(key, Date.now() + CACHE_DURATION);
+};
+
+// Helper function to batch fetch host data with caching
 const fetchHostsData = async (hostIds: string[]): Promise<Record<string, User>> => {
   // Remove duplicates
   const uniqueHostIds = [...new Set(hostIds)];
   const hostsMap: Record<string, User> = {};
   
-  // Batch fetch in groups of 10 (Firestore limit for 'in' queries)
-  for (let i = 0; i < uniqueHostIds.length; i += 10) {
-    const batch = uniqueHostIds.slice(i, i + 10);
+  // Check cache first
+  const uncachedHostIds: string[] = [];
+  uniqueHostIds.forEach(hostId => {
+    if (hostsCache.has(hostId) && isCacheValid(`host_${hostId}`)) {
+      hostsMap[hostId] = hostsCache.get(hostId)!;
+    } else {
+      uncachedHostIds.push(hostId);
+    }
+  });
+  
+  // Batch fetch uncached hosts in groups of 10 (Firestore limit for 'in' queries)
+  for (let i = 0; i < uncachedHostIds.length; i += 10) {
+    const batch = uncachedHostIds.slice(i, i + 10);
     try {
       const q = query(usersCollection, where('__name__', 'in', batch));
       const hostSnaps = await getDocs(q);
       
       hostSnaps.forEach(doc => {
-        hostsMap[doc.id] = { id: doc.id, ...doc.data() } as User;
+        const hostData = { id: doc.id, ...doc.data() } as User;
+        hostsMap[doc.id] = hostData;
+        // Cache the host data
+        hostsCache.set(doc.id, hostData);
+        cacheExpiry.set(`host_${doc.id}`, Date.now() + CACHE_DURATION);
       });
     } catch (error) {
       console.error('Error batch fetching hosts:', error);
@@ -184,10 +217,25 @@ export const getAllRooms = async (): Promise<Room[]> => {
   }
 };
 
-// Get all activities from the activities_upl collection
-export const getAllActivities = async (): Promise<Room[]> => {
+// Get all activities from the activities_upl collection with caching and pagination
+export const getAllActivities = async (limitCount: number = 20, lastDoc?: any): Promise<Room[]> => {
+  const cacheKey = `all_activities_${limitCount}_${lastDoc?.id || 'first'}`;
+  
+  // Check cache first
+  if (activitiesCache.has(cacheKey) && isCacheValid(cacheKey)) {
+    console.log('📦 Using cached activities');
+    return activitiesCache.get(cacheKey)!;
+  }
+  
   try {
-    const querySnapshot = await getDocs(activitiesCollection);
+    console.log('🚀 Fetching activities from Firestore...');
+    let q = query(activitiesCollection, orderBy('dateTime', 'desc'), limit(limitCount));
+    
+    if (lastDoc) {
+      q = query(activitiesCollection, orderBy('dateTime', 'desc'), startAfter(lastDoc), limit(limitCount));
+    }
+    
+    const querySnapshot = await getDocs(q);
     const activitiesData: DocumentData[] = [];
     const hostIds: string[] = [];
     
@@ -217,11 +265,11 @@ export const getAllActivities = async (): Promise<Room[]> => {
       if (data.hostId) hostIds.push(data.hostId);
     });
     
-    // Then batch fetch all hosts data
+    // Then batch fetch all hosts data (with caching)
     const hostsMap = await fetchHostsData(hostIds);
     
     // Finally, combine activity data with host data
-    return activitiesData.map(activity => {
+    const result = activitiesData.map(activity => {
       const host = hostsMap[activity.hostId];
       // If host is missing, create a fallback host object
       const fallbackHost = host || {
@@ -237,16 +285,36 @@ export const getAllActivities = async (): Promise<Room[]> => {
         hostName: activity.hostName || fallbackHost.name
       };
     }) as Room[];
+    
+    // Cache the result
+    setCache(cacheKey, result);
+    console.log(`✅ Cached ${result.length} activities`);
+    
+    return result;
   } catch (error) {
     console.error("Error getting activities:", error);
     throw error;
   }
 };
 
-// Get activities by sport type from the activities_upl collection
-export const getActivitiesBySport = async (sportType: string): Promise<Room[]> => {
+// Get activities by sport type from the activities_upl collection with caching
+export const getActivitiesBySport = async (sportType: string, limitCount: number = 20): Promise<Room[]> => {
+  const cacheKey = `sport_activities_${sportType}_${limitCount}`;
+  
+  // Check cache first
+  if (activitiesCache.has(cacheKey) && isCacheValid(cacheKey)) {
+    console.log(`📦 Using cached ${sportType} activities`);
+    return activitiesCache.get(cacheKey)!;
+  }
+  
   try {
-    const q = query(activitiesCollection, where("sportType", "==", sportType));
+    console.log(`🚀 Fetching ${sportType} activities from Firestore...`);
+    const q = query(
+      activitiesCollection, 
+      where("sportType", "==", sportType),
+      orderBy('dateTime', 'desc'),
+      limit(limitCount)
+    );
     const querySnapshot = await getDocs(q);
     
     const activitiesData: DocumentData[] = [];
@@ -278,11 +346,11 @@ export const getActivitiesBySport = async (sportType: string): Promise<Room[]> =
       if (data.hostId) hostIds.push(data.hostId);
     });
     
-    // Then batch fetch all hosts data
+    // Then batch fetch all hosts data (with caching)
     const hostsMap = await fetchHostsData(hostIds);
     
     // Finally, combine activity data with host data
-    return activitiesData.map(activity => {
+    const result = activitiesData.map(activity => {
       const host = hostsMap[activity.hostId];
       // If host is missing, create a fallback host object
       const fallbackHost = host || {
@@ -298,6 +366,12 @@ export const getActivitiesBySport = async (sportType: string): Promise<Room[]> =
         hostName: activity.hostName || fallbackHost.name
       };
     }) as Room[];
+    
+    // Cache the result
+    setCache(cacheKey, result);
+    console.log(`✅ Cached ${result.length} ${sportType} activities`);
+    
+    return result;
   } catch (error) {
     console.error("Error getting activities by sport:", error);
     throw error;
@@ -739,4 +813,23 @@ export const updateExistingRoomsWithNewFields = async (): Promise<void> => {
     console.error("Error updating existing rooms:", error);
     throw error;
   }
+};
+
+// Cache management functions
+export const clearActivitiesCache = () => {
+  activitiesCache.clear();
+  cacheExpiry.clear();
+  console.log('🧹 Cleared activities cache');
+};
+
+export const clearHostsCache = () => {
+  hostsCache.clear();
+  console.log('🧹 Cleared hosts cache');
+};
+
+export const clearAllCache = () => {
+  activitiesCache.clear();
+  hostsCache.clear();
+  cacheExpiry.clear();
+  console.log('🧹 Cleared all cache');
 }; 

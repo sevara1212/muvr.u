@@ -29,9 +29,9 @@ const ActivitiesPage = () => {
         let fetchedRooms: Room[] = [];
         
         if (selectedSport && selectedSport !== 'All') {
-          fetchedRooms = await getActivitiesBySport(selectedSport);
+          fetchedRooms = await getActivitiesBySport(selectedSport, 20);
         } else {
-          fetchedRooms = await getAllActivities();
+          fetchedRooms = await getAllActivities(20);
         }
         
         setAllRooms(fetchedRooms);

@@ -29,7 +29,7 @@ const Index = () => {
     setError(null);
     
     try {
-      const activities = await getAllActivities();
+      const activities = await getAllActivities(20);
       setRooms(activities || []);
       
       // Filter user's activities if logged in
