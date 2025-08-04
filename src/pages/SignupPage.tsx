@@ -1,230 +1,123 @@
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
-import { getAuth, createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { toast } from "sonner";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/contexts/AuthContext";
-import { doc, setDoc, usersCollection } from "@/lib/firebase";
-import { ActivityLevel, Gender } from "@/types";
-import { ArrowLeft } from 'lucide-react';
-import muvrLogo from '/public/images/muvr_logo.png';
+import { useToast } from "@/hooks/use-toast";
 
-const strongPasswordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/;
-
-const passwordChecks = [
-  {
-    label: "At least 8 characters",
-    test: (pwd: string) => pwd.length >= 8,
-  },
-  {
-    label: "At least one number",
-    test: (pwd: string) => /\d/.test(pwd),
-  },
-  {
-    label: "At least one uppercase letter",
-    test: (pwd: string) => /[A-Z]/.test(pwd),
-  },
-  {
-    label: "At least one lowercase letter",
-    test: (pwd: string) => /[a-z]/.test(pwd),
-  },
-  {
-    label: "At least one special character (!@#$%^&*)",
-    test: (pwd: string) => /[!@#$%^&*]/.test(pwd),
-  },
-];
-
-const SignupPage = () => {
-  const [name, setName] = useState("");
+export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [gender, setGender] = useState<Gender | "">("");
-  const [age, setAge] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [passwordError, setPasswordError] = useState("");
-  const [formError, setFormError] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [name, setName] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const { signup } = useAuth();
+  const { toast } = useToast();
   const navigate = useNavigate();
-  const auth = getAuth();
-  const { currentUser, signup, error: authError } = useAuth();
-  
-  // Redirect if already logged in
-  if (currentUser) {
-    navigate("/");
-    return null;
-  }
-  
-  // Password strength check
-  const checkPasswordStrength = (pwd: string) => {
-    if (!pwd) return "";
-    if (!strongPasswordRegex.test(pwd)) {
-      return "Password must be at least 8 characters, include uppercase, lowercase, number, and special character.";
-    }
-    return "";
-  };
-
-  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setPassword(e.target.value);
-    setPasswordError(checkPasswordStrength(e.target.value));
-  };
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    setFormError("");
-    setLoading(true);
-    if (checkPasswordStrength(password)) {
-      setPasswordError(checkPasswordStrength(password));
-      setLoading(false);
+    
+    if (password !== confirmPassword) {
+      toast({
+        title: "Error",
+        description: "Passwords do not match",
+        variant: "destructive",
+      });
       return;
     }
-    if (!gender) {
-      setFormError("Please select a gender.");
-      setLoading(false);
-      return;
-    }
-    if (!age || +age < 14 || +age > 75) {
-      setFormError("Age must be between 14 and 75.");
-      setLoading(false);
-      return;
-    }
+
+    setIsLoading(true);
     try {
-      const result = await signup(
-        email,
-        password,
-        name,
-        gender || 'Other',
-        age ? parseInt(age) : 14
-      );
-      if (result.success) {
-        toast.success("Account created successfully!");
-        navigate("/");
-      } else {
-        setFormError(result.error || "Failed to create account");
-        toast.error(result.error || "Failed to create account");
-      }
+      await signup(email, password, name);
+      toast({
+        title: "Success",
+        description: "Account created successfully!",
+      });
+      navigate("/");
     } catch (error: any) {
-      setFormError(error.message || "Failed to create account");
-      toast.error(error.message || "Failed to create account");
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create account",
+        variant: "destructive",
+      });
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
-  
-  const allPasswordChecksPassed = passwordChecks.every(check => check.test(password));
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-[#f5f6fa] to-[#e9e6f7]">
-      <div className="absolute top-6 left-6">
-        <button
-          onClick={() => navigate('/')}
-          className="flex items-center gap-2 text-[#35179d] hover:text-[#2a146a] transition-colors duration-200 font-medium"
-        >
-          <ArrowLeft size={20} />
-          <span>Back</span>
-        </button>
-      </div>
-      <Card className="w-full max-w-md p-8 shadow-xl border-0">
-        <div className="flex flex-col items-center mb-6">
-          <img src={muvrLogo} alt="Muvr Logo" className="h-14 mb-2" />
-          <div className="text-2xl font-extrabold text-[#35179d] tracking-tight">Muvr</div>
-        </div>
-        <form onSubmit={handleSignup} className="space-y-5">
-          <div className="text-lg font-semibold text-center mb-1 text-[#35179d]">Create an account</div>
-          <div className="text-center text-gray-500 mb-4 text-sm">
-            Enter your information to create an account
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader className="text-center">
+          <div className="flex justify-center mb-4">
+            <img src="/images/muvr_logo.png" alt="Muvr Logo" className="h-16 w-16 object-contain" />
           </div>
-          {(formError || authError) && (
-            <div className="text-center text-red-600 text-xs mb-2 bg-red-50 rounded p-2 border border-red-200">{formError || authError}</div>
-          )}
-          <div className="space-y-3">
-            <div>
+          <CardTitle className="text-2xl font-bold">Create Account</CardTitle>
+          <CardDescription>
+            Join Muvr and start connecting with fitness enthusiasts
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSignup} className="space-y-4">
+            <div className="space-y-2">
               <Label htmlFor="name">Full Name</Label>
               <Input
                 id="name"
                 type="text"
-                placeholder="John Doe"
+                placeholder="Enter your full name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
               />
             </div>
-            <div>
+            <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
                 type="email"
-                placeholder="name@example.com"
+                placeholder="Enter your email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
               />
             </div>
-            <div>
+            <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <Input
                 id="password"
                 type="password"
+                placeholder="Enter your password"
                 value={password}
-                onChange={handlePasswordChange}
-                minLength={8}
+                onChange={(e) => setPassword(e.target.value)}
                 required
               />
-              <div className="mt-2 space-y-1">
-                {passwordChecks.map((check, idx) => {
-                  const passed = check.test(password);
-                  return (
-                    <div key={idx} className="flex items-center gap-2 text-xs">
-                      <span className={passed ? "text-green-600" : "text-red-500"}>{passed ? "✔️" : "❌"}</span>
-                      <span className={passed ? "text-green-700" : "text-gray-700"}>{check.label}</span>
-                    </div>
-                  );
-                })}
-              </div>
             </div>
-            <div>
-              <Label htmlFor="gender">Gender</Label>
-              <select
-                id="gender"
-                value={gender}
-                onChange={(e) => setGender(e.target.value as Gender)}
-                className="w-full px-3 py-2 rounded border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#35179d] text-black text-sm bg-white mt-1"
-                required
-              >
-                <option value="">Select gender</option>
-                <option value={Gender.Male}>Male</option>
-                <option value={Gender.Female}>Female</option>
-                <option value="Other">Other</option>
-              </select>
-            </div>
-            <div>
-              <Label htmlFor="age">Age</Label>
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Confirm Password</Label>
               <Input
-                id="age"
-                type="number"
-                placeholder="25"
-                min="14"
-                max="75"
-                value={age}
-                onChange={(e) => setAge(e.target.value)}
-                className="w-full"
+                id="confirmPassword"
+                type="password"
+                placeholder="Confirm your password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
                 required
               />
             </div>
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? "Creating Account..." : "Create Account"}
+            </Button>
+          </form>
+          <div className="mt-4 text-center text-sm">
+            Already have an account?{" "}
+            <Link to="/login" className="text-blue-600 hover:underline">
+              Sign in
+            </Link>
           </div>
-          <Button type="submit" className="w-full py-2 rounded bg-[#35179d] text-white font-bold text-base mt-2 hover:bg-[#2a146a] transition" disabled={loading}>
-            {loading ? "Creating account..." : "Sign up"}
-          </Button>
-          <div className="text-center text-xs mt-3 text-gray-500">
-            Already have an account?{' '}
-            <Link to="/login" className="text-[#35179d] font-semibold hover:underline">Login</Link>
-          </div>
-        </form>
+        </CardContent>
       </Card>
     </div>
   );
-};
-
-export default SignupPage; 
+} 
