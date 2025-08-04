@@ -6,7 +6,7 @@ import SportCategoryCard from "@/components/SportCategoryCard";
 import { Room, SportType } from "@/types";
 import { Search, Filter, ArrowLeft } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
-import { getAllRooms, getRoomsBySport } from "@/services/roomService";
+import { getAllActivities, getActivitiesBySport } from "@/services/roomService";
 import { toast } from "sonner";
 
 const ExplorePage = () => {
@@ -16,6 +16,7 @@ const ExplorePage = () => {
   const [selectedCategory, setSelectedCategory] = useState<SportType | null>(null);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showAllActivities, setShowAllActivities] = useState(false);
   const searchTimeout = useRef<NodeJS.Timeout | null>(null);
   
   // Fetch rooms from Firebase (by category or all)
@@ -26,11 +27,11 @@ const ExplorePage = () => {
         let fetchedRooms: Room[];
         if (sport && Object.values(SportType).includes(sport as SportType)) {
           setSelectedCategory(sport as SportType);
-          fetchedRooms = await getRoomsBySport(sport);
+          fetchedRooms = await getActivitiesBySport(sport);
         } else if (selectedCategory) {
-          fetchedRooms = await getRoomsBySport(selectedCategory);
+          fetchedRooms = await getActivitiesBySport(selectedCategory);
         } else {
-          fetchedRooms = await getAllRooms();
+          fetchedRooms = await getAllActivities();
         }
         setRooms(fetchedRooms);
       } catch (error) {
@@ -52,7 +53,7 @@ const ExplorePage = () => {
       if (!searchQuery) return;
       setLoading(true);
       try {
-        const allRooms = await getAllRooms();
+        const allRooms = await getAllActivities();
         setRooms(allRooms);
       } catch (error) {
         console.error("Error fetching all rooms for search:", error);
@@ -75,6 +76,45 @@ const ExplorePage = () => {
     const city = (room.location?.city || "").toLowerCase();
     return title.includes(q) || desc.includes(q) || city.includes(q);
   });
+
+  // Calculate recommendation score for an activity
+  const calculateRecommendationScore = (room: Room) => {
+    const now = new Date();
+    let score = 0;
+    
+    // Base score for being upcoming
+    score += 100;
+    
+    // Bonus for activities with available spots (not full)
+    const participantsCount = room.participants?.length || 0;
+    const availableSpots = room.maxParticipants - participantsCount;
+    if (availableSpots > 0) {
+      score += availableSpots * 10; // More available spots = higher score
+    } else {
+      score -= 100; // Penalty for full activities
+    }
+    
+    // Bonus for activities happening soon (within next 7 days)
+    const activityDate = new Date(room.dateTime);
+    const daysUntilActivity = Math.ceil((activityDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    if (daysUntilActivity <= 7) {
+      score += 30;
+    }
+    
+    // Bonus for activities with more participants (social factor)
+    if (participantsCount > 0 && participantsCount < room.maxParticipants) {
+      score += participantsCount * 2;
+    }
+    
+    return score;
+  };
+
+  // Sort filtered rooms by recommendation score
+  const sortedRooms = filteredRooms.sort((a, b) => {
+    const scoreA = calculateRecommendationScore(a);
+    const scoreB = calculateRecommendationScore(b);
+    return scoreB - scoreA;
+  });
   
   const handleCategorySelect = async (category: SportType) => {
     const newCategory = selectedCategory === category ? null : category;
@@ -95,9 +135,9 @@ const ExplorePage = () => {
       let fetchedRooms: Room[];
       
       if (selectedCategory) {
-        fetchedRooms = await getRoomsBySport(selectedCategory);
+        fetchedRooms = await getActivitiesBySport(selectedCategory);
       } else {
-        fetchedRooms = await getAllRooms();
+        fetchedRooms = await getAllActivities();
       }
       
       setRooms(fetchedRooms);
@@ -170,7 +210,7 @@ const ExplorePage = () => {
         <div className="flex justify-between items-center mb-3">
           <h2 className="text-lg font-semibold text-white-force">Activities</h2>
           <span className="text-sm text-gray-500">
-            {loading ? "Loading..." : `${filteredRooms.length} found`}
+            {loading ? "Loading..." : `${sortedRooms.length} found`}
           </span>
         </div>
         
@@ -178,15 +218,35 @@ const ExplorePage = () => {
           <div className="text-center py-8 text-gray-500">
             <p>Loading activities...</p>
           </div>
-        ) : filteredRooms.length > 0 ? (
+        ) : sortedRooms.length > 0 ? (
           <div className="space-y-4">
-            {filteredRooms.map(room => (
+            {/* Show recommended activities (first 7) */}
+            {sortedRooms.slice(0, showAllActivities ? undefined : 7).map(room => (
               <RoomCard 
                 key={room.id} 
                 room={room} 
                 onActionComplete={handleRoomAction}
               />
             ))}
+            
+            {/* Show More/Less button */}
+            {sortedRooms.length > 7 && (
+              <div className="text-center mt-6">
+                <button
+                  onClick={() => setShowAllActivities(!showAllActivities)}
+                  className="px-6 py-3 bg-white/20 backdrop-blur-sm border border-white/30 rounded-full text-white font-semibold hover:bg-white/30 transition-all duration-200"
+                >
+                  {showAllActivities ? 'Show Less' : `Show More (${sortedRooms.length - 7} more)`}
+                </button>
+              </div>
+            )}
+            
+            {/* Recommendation info */}
+            {!showAllActivities && sortedRooms.length > 7 && (
+              <div className="text-center text-white/70 text-sm mt-4">
+                <p>Showing top 7 recommended activities based on availability and timing</p>
+              </div>
+            )}
           </div>
         ) : (
           <div className="text-center py-8 text-gray-500">

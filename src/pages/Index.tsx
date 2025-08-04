@@ -4,70 +4,157 @@ import { useNavigate } from "react-router-dom";
 import Layout from "@/components/Layout";
 import RoomCard from "@/components/RoomCard";
 import SportCategoryCard from "@/components/SportCategoryCard";
-import { SportType } from "@/types";
+import { SportType, Room } from "@/types";
 import { Search, Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useRooms } from "@/hooks/useRooms";
+import { getAllActivities } from "@/services/roomService";
 
 const Index = () => {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
-  const { rooms, userRooms, loading, error, fetchAllRooms } = useRooms(currentUser);
-  const [recommendedRooms, setRecommendedRooms] = useState<typeof rooms>([]);
+  const [rooms, setRooms] = useState<Room[]>([]);
+  const [userRooms, setUserRooms] = useState<Room[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [recommendedRooms, setRecommendedRooms] = useState<Room[]>([]);
   
-  // Refresh data when component mounts or when user changes
+  // Fetch activities when component mounts
   useEffect(() => {
-    fetchAllRooms();
+    fetchAllActivities();
   }, [currentUser]);
-  
-  // Sort rooms based on user preferences
-  useEffect(() => {
-    if (rooms.length > 0) {
-      // Create a copy of rooms to sort
-      let sortedRooms = [...rooms];
+
+  // Fetch all activities
+  const fetchAllActivities = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const activities = await getAllActivities();
+      setRooms(activities || []);
       
-      // If user is logged in, sort by user interests
-      if (currentUser?.interests && currentUser.interests.length > 0) {
-        sortedRooms.sort((a, b) => {
-          // Check if room sport type is in user interests
-          const aMatchesInterest = currentUser.interests.includes(a.sportType);
-          const bMatchesInterest = currentUser.interests.includes(b.sportType);
-          
-          if (aMatchesInterest && !bMatchesInterest) return -1;
-          if (!aMatchesInterest && bMatchesInterest) return 1;
-          
-          // If both match or both don't match, sort by date
-          return new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime();
-        });
-      } else {
-        // If no preferences, sort by date
-        sortedRooms.sort((a, b) => 
-          new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime()
+      // Filter user's activities if logged in
+      if (currentUser) {
+        const userActivities = (activities || []).filter(activity => 
+          activity.participants?.includes(currentUser.id)
         );
+        setUserRooms(userActivities);
+      } else {
+        setUserRooms([]);
+      }
+    } catch (err: any) {
+      console.error('Error fetching activities:', err);
+      setError(err.message || 'Failed to fetch activities');
+      setRooms([]);
+      setUserRooms([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Calculate recommendation score for an activity
+  const calculateRecommendationScore = (room: Room) => {
+    try {
+      const now = new Date();
+      let score = 0;
+      
+      // Base score for being upcoming
+      score += 100;
+      
+      // Bonus for activities that match user interests
+      if (currentUser && currentUser.interests) {
+        if (currentUser.interests.includes(room.sportType)) {
+          score += 50;
+        }
       }
       
-      // Filter out past events
-      const now = new Date();
-      sortedRooms = sortedRooms.filter(room => new Date(room.dateTime) > now);
+      // Bonus for activities with available spots (not full)
+      const participantsCount = room.participants?.length || 0;
+      const availableSpots = (room.maxParticipants || 0) - participantsCount;
+      if (availableSpots > 0) {
+        score += availableSpots * 10; // More available spots = higher score
+      } else {
+        score -= 100; // Penalty for full activities
+      }
       
-      // Take first 5 rooms
-      setRecommendedRooms(sortedRooms.slice(0, 5));
+      // Bonus for activities happening soon (within next 7 days)
+      try {
+        const activityDate = new Date(room.dateTime);
+        const daysUntilActivity = Math.ceil((activityDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        if (daysUntilActivity <= 7) {
+          score += 30;
+        }
+      } catch (error) {
+        console.error('Error calculating days until activity:', error);
+      }
+      
+      // Bonus for activities with more participants (social factor)
+      if (participantsCount > 0 && participantsCount < (room.maxParticipants || 0)) {
+        score += participantsCount * 2;
+      }
+      
+      return score;
+    } catch (error) {
+      console.error('Error calculating recommendation score:', error);
+      return 0;
+    }
+  };
+  
+  // Sort rooms based on recommendations
+  useEffect(() => {
+    try {
+      if (rooms && rooms.length > 0) {
+        // Filter upcoming activities
+        const now = new Date();
+        const upcomingRooms = rooms.filter(room => {
+          try {
+            return new Date(room.dateTime) > now;
+          } catch (error) {
+            console.error('Error parsing date for room:', room.id, error);
+            return false;
+          }
+        });
+        
+        // Sort by recommendation score
+        const sortedRooms = upcomingRooms.sort((a, b) => {
+          try {
+            const scoreA = calculateRecommendationScore(a);
+            const scoreB = calculateRecommendationScore(b);
+            return scoreB - scoreA;
+          } catch (error) {
+            console.error('Error calculating recommendation score:', error);
+            return 0;
+          }
+        });
+        
+        // Take first 7 recommended rooms
+        setRecommendedRooms(sortedRooms.slice(0, 7));
+      } else {
+        setRecommendedRooms([]);
+      }
+    } catch (error) {
+      console.error('Error in recommendation calculation:', error);
+      setRecommendedRooms([]);
     }
   }, [rooms, currentUser]);
 
-  // Determine popular sport categories
-  const popularSportTypes = [SportType.Running, SportType.Yoga, SportType.Basketball, SportType.Cycling];
+  // Determine popular sport categories (only show sports that exist in our data)
+  const popularSportTypes = [SportType.Running, SportType.Yoga, SportType.Tennis, SportType.Gym];
   
   const sportIcons: Record<string, string> = {
     Running: '/images/running_icon.png',
     Yoga: '/images/yoga_icon.png',
     Basketball: '/images/basketball_icon.png',
     Cycling: '/images/cycling_icon.png',
+    Tennis: '/images/tennis_icon.png',
+    Gym: '/images/gym_icon.png',
+    Football: '/images/football_icon.png',
+    Swimming: '/images/swimming_icon.png',
+    Other: '/images/other_icon.png',
   };
 
   const handleRoomAction = () => {
     // Refresh data when a user joins or leaves a room
-    fetchAllRooms();
+    fetchAllActivities();
   };
   
   return (
@@ -124,9 +211,12 @@ const Index = () => {
               <div className="flex flex-col items-center justify-between bg-white rounded-2xl shadow h-24 w-20 mx-auto cursor-pointer hover:bg-gray-100 transition p-2" key={sport}>
                 <div className="flex-grow flex flex-col items-center justify-center">
                   <img 
-                    src={sportIcons[sport]} 
+                    src={sportIcons[sport] || '/images/other_icon.png'} 
                     alt={sport + ' icon'} 
                     className="h-14 w-14 object-contain mb-[2px]" 
+                    onError={(e) => {
+                      e.currentTarget.src = '/images/other_icon.png';
+                    }}
                   />
                   <span className="text-xs font-semibold text-[#35179d] capitalize leading-tight text-center mt-0.5">{sport}</span>
                 </div>
@@ -136,7 +226,7 @@ const Index = () => {
         </div>
         {/* Upcoming Activities */}
         <div className="w-full max-w-2xl px-4 mb-4">
-          <h2 className="text-2xl font-bold text-left mb-2">Upcoming Activities</h2>
+          <h2 className="text-2xl font-bold text-left mb-2">Recommended Activities</h2>
           <div className="space-y-3">
             {loading ? (
               <div className="flex justify-center py-4">
@@ -146,7 +236,7 @@ const Index = () => {
               <div className="text-center py-4 text-red-300">
                 Failed to load activities. Please try again.
               </div>
-            ) : recommendedRooms.length > 0 ? (
+            ) : recommendedRooms && recommendedRooms.length > 0 ? (
               recommendedRooms.map(room => (
                 <RoomCard 
                   key={room.id}
@@ -168,7 +258,7 @@ const Index = () => {
           </div>
         </div>
         {/* User's Activities (if logged in) */}
-        {currentUser && userRooms.length > 0 && (
+        {currentUser && userRooms && userRooms.length > 0 && (
           <div className="w-full max-w-2xl px-4 mb-4">
             <h2 className="text-2xl font-bold text-left mb-2">Your Activities</h2>
             <div className="space-y-3">

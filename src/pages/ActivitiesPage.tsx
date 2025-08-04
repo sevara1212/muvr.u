@@ -6,7 +6,7 @@ import RoomCard from "@/components/RoomCard";
 import { Room } from "@/types";
 import { ArrowLeft } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { getAllRooms, getJoinedRooms, updateUserSportType, getRoomsBySport } from "@/services/roomService";
+import { getAllActivities, getJoinedRooms, updateUserSportType, getActivitiesBySport } from "@/services/roomService";
 import { SportType } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -20,6 +20,7 @@ const ActivitiesPage = () => {
   const [selectedSport, setSelectedSport] = useState<string | null>(null);
   const [sportLoading, setSportLoading] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [showAllActivities, setShowAllActivities] = useState(false);
   
   useEffect(() => {
     const fetchRooms = async () => {
@@ -28,9 +29,9 @@ const ActivitiesPage = () => {
         let fetchedRooms: Room[] = [];
         
         if (selectedSport && selectedSport !== 'All') {
-          fetchedRooms = await getRoomsBySport(selectedSport);
+          fetchedRooms = await getActivitiesBySport(selectedSport);
         } else {
-          fetchedRooms = await getAllRooms();
+          fetchedRooms = await getAllActivities();
         }
         
         setAllRooms(fetchedRooms);
@@ -51,10 +52,11 @@ const ActivitiesPage = () => {
     fetchRooms();
   }, [currentUser, selectedSport]);
   
-  // Get filtered upcoming rooms
+  // Get filtered upcoming rooms with recommendations
   const getFilteredUpcomingRooms = () => {
     const now = new Date();
-    return allRooms
+    
+    const filtered = allRooms
       .filter(room => {
         // Filter by date (upcoming only)
         const isUpcoming = new Date(room.dateTime) > now;
@@ -79,7 +81,55 @@ const ActivitiesPage = () => {
         
         return isUpcoming && genderMatch && ageMatch;
       })
-      .sort((a, b) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime());
+      .sort((a, b) => {
+        // Calculate recommendation score for each activity
+        const scoreA = calculateRecommendationScore(a);
+        const scoreB = calculateRecommendationScore(b);
+        
+        // Sort by recommendation score (highest first)
+        return scoreB - scoreA;
+      });
+    
+    return filtered;
+  };
+
+  // Calculate recommendation score for an activity
+  const calculateRecommendationScore = (room: Room) => {
+    const now = new Date();
+    let score = 0;
+    
+    // Base score for being upcoming
+    score += 100;
+    
+    // Bonus for activities that match user interests
+    if (currentUser && currentUser.interests) {
+      if (currentUser.interests.includes(room.sportType)) {
+        score += 50;
+      }
+    }
+    
+    // Bonus for activities with available spots (not full)
+    const participantsCount = room.participants?.length || 0;
+    const availableSpots = room.maxParticipants - participantsCount;
+    if (availableSpots > 0) {
+      score += availableSpots * 10; // More available spots = higher score
+    } else {
+      score -= 100; // Penalty for full activities
+    }
+    
+    // Bonus for activities happening soon (within next 7 days)
+    const activityDate = new Date(room.dateTime);
+    const daysUntilActivity = Math.ceil((activityDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    if (daysUntilActivity <= 7) {
+      score += 30;
+    }
+    
+    // Bonus for activities with more participants (social factor)
+    if (participantsCount > 0 && participantsCount < room.maxParticipants) {
+      score += participantsCount * 2;
+    }
+    
+    return score;
   };
   
   // Get filtered joined rooms
@@ -122,9 +172,9 @@ const ActivitiesPage = () => {
       let fetchedRooms: Room[] = [];
       
       if (selectedSport && selectedSport !== 'All') {
-        fetchedRooms = await getRoomsBySport(selectedSport);
+        fetchedRooms = await getActivitiesBySport(selectedSport);
       } else {
-        fetchedRooms = await getAllRooms();
+        fetchedRooms = await getAllActivities();
       }
       
       setAllRooms(fetchedRooms);
@@ -209,7 +259,7 @@ const ActivitiesPage = () => {
             value="upcoming" 
             className="flex-1 h-12 text-sm font-semibold data-[state=active]:bg-white data-[state=active]:text-[#35179d] data-[state=active]:shadow-md text-white rounded-lg transition-all duration-200 hover:bg-white/10"
           >
-            Upcoming
+            Recommended Activities
           </TabsTrigger>
           <TabsTrigger 
             value="joined" 
@@ -225,13 +275,35 @@ const ActivitiesPage = () => {
               <p>Loading activities...</p>
             </div>
           ) : upcomingRooms.length > 0 ? (
-            upcomingRooms.map(room => (
-              <RoomCard 
-                key={room.id}
-                room={room} 
-                onActionComplete={handleRoomAction}
-              />
-            ))
+            <>
+              {/* Show recommended activities (first 7) */}
+              {upcomingRooms.slice(0, showAllActivities ? undefined : 7).map(room => (
+                <RoomCard 
+                  key={room.id}
+                  room={room} 
+                  onActionComplete={handleRoomAction}
+                />
+              ))}
+              
+              {/* Show More/Less button */}
+              {upcomingRooms.length > 7 && (
+                <div className="text-center mt-6">
+                  <button
+                    onClick={() => setShowAllActivities(!showAllActivities)}
+                    className="px-6 py-3 bg-white/20 backdrop-blur-sm border border-white/30 rounded-full text-white font-semibold hover:bg-white/30 transition-all duration-200"
+                  >
+                    {showAllActivities ? 'Show Less' : `Show More (${upcomingRooms.length - 7} more)`}
+                  </button>
+                </div>
+              )}
+              
+              {/* Recommendation info */}
+              {!showAllActivities && upcomingRooms.length > 7 && (
+                <div className="text-center text-white/70 text-sm mt-4">
+                  <p>Showing top 7 recommended activities based on your interests and availability</p>
+                </div>
+              )}
+            </>
           ) : (
             <div className="text-center py-8 text-white-force">
               <p>No upcoming activities available.</p>

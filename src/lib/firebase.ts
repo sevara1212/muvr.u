@@ -68,6 +68,7 @@ if (isLocalhost && USE_FIREBASE_EMULATOR) {
 // Collections references
 const roomsCollection = collection(db, "rooms");
 const usersCollection = collection(db, "users");
+const activitiesCollection = collection(db, "activities_upl");
 
 export {
   app,
@@ -76,6 +77,7 @@ export {
   storage,
   roomsCollection,
   usersCollection,
+  activitiesCollection,
   onAuthStateChanged,
   doc,
   setDoc,

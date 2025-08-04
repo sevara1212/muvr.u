@@ -47,6 +47,8 @@ export function getSportIcon(sportType: string): string {
       return '🎾';
     case 'gym':
       return '💪';
+    case 'other':
+      return '🏆';
     default:
       return '🏆';
   }

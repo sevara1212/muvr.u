@@ -77,12 +77,17 @@ export function useFirebaseAuth() {
             // Check for approved requests after user is loaded
             checkApprovedRequests(firebaseUser.uid);
           } else {
-            // User doesn't exist in Firestore yet (should only happen if auth was created outside our app)
+            // User doesn't exist in Firestore - this means they need to sign up properly
+            console.log('User not found in Firestore:', firebaseUser.email);
+            
+            // Sign out the user since they don't have a proper profile
+            await signOut(auth);
+            
             setAuthState({
               currentUser: null,
-              firebaseUser,
+              firebaseUser: null,
               loading: false,
-              error: 'User profile not found'
+              error: 'Account not found. Please sign up first.'
             });
           }
         } catch (error: any) {

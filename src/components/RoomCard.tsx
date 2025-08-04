@@ -38,6 +38,7 @@ const RoomCard = ({ room, onActionComplete }: RoomCardProps) => {
     Gym: '/images/gym_icon.png',
     Football: '/images/football_icon.png',
     Swimming: '/images/swimming_icon.png',
+    Other: '/images/other_icon.png',
   };
   
   const isUserJoined = currentUser && room.participants?.includes(currentUser.id);
@@ -83,7 +84,11 @@ const RoomCard = ({ room, onActionComplete }: RoomCardProps) => {
         <div className="flex justify-between items-start mb-1">
           <div className="flex items-center gap-2">
             <span className="flex items-center">
-              <img src={sportIcons[room.sportType]} alt={room.sportType + ' icon'} className="h-6 w-6 object-contain" />
+              <img 
+                src={sportIcons[room.sportType] || '/images/other_icon.png'} 
+                alt={room.sportType + ' icon'} 
+                className="h-6 w-6 object-contain" 
+              />
             </span>
             <span className="font-bold text-[#1A1A72] text-base">{room.sportType}</span>
           </div>
@@ -116,7 +121,7 @@ const RoomCard = ({ room, onActionComplete }: RoomCardProps) => {
           </div>
           <div className="flex items-center gap-2">
             <Users size={16} className="text-[#887DC0]" />
-            Hosted by {room.host?.name || "Unknown"}
+            Hosted by {room.hostName || room.host?.name || "Unknown"}
           </div>
         </div>
         

@@ -77,6 +77,7 @@ export interface Room {
   title: string;
   sportType: SportType;
   hostId: string; // ID of the host user
+  hostName?: string; // Name of the host user
   host?: User; // Full host user object (may be populated from hostId)
   location: Location;
   dateTime: string;

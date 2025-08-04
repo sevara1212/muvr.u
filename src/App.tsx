@@ -9,6 +9,8 @@ import Index from "./pages/Index";
 import ExplorePage from "./pages/ExplorePage";
 import CreateRoomPage from "./pages/CreateRoomPage";
 import RoomDetailPage from "./pages/RoomDetailPage";
+
+import EditRoomPage from "./pages/EditRoomPage";
 import ActivitiesPage from "./pages/ActivitiesPage";
 import ProfilePage from "./pages/ProfilePage";
 import PaymentPage from "./pages/PaymentPage";
@@ -32,6 +34,7 @@ const App = () => (
             <Route path="/create" element={<CreateRoomPage />} />
             <Route path="/room/:id" element={<RoomDetailPage />} />
             <Route path="/join/:id" element={<RoomDetailPage />} />
+            <Route path="/edit-room/:id" element={<EditRoomPage />} />
             <Route path="/activities" element={<ActivitiesPage />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/payment" element={<PaymentPage />} />
