@@ -51,22 +51,22 @@ if (isLocalhost && USE_FIREBASE_EMULATOR) {
   // Enable offline persistence with better error handling
   enableIndexedDbPersistence(db)
     .then(() => {
-      console.log("Firestore persistence enabled successfully");
+      console.log("✅ Firestore persistence enabled successfully");
     })
     .catch((err) => {
-      console.error("Error enabling persistence:", err);
+      console.error("❌ Error enabling persistence:", err);
       if (err.code === 'failed-precondition') {
         // Multiple tabs open, persistence can only be enabled in one tab at a time
-        console.warn("Multiple tabs open, persistence enabled in first tab only");
+        console.warn("⚠️ Multiple tabs open, persistence enabled in first tab only");
       } else if (err.code === 'unimplemented') {
         // The current browser does not support all of the features required for persistence
-        console.warn("This browser doesn't support persistence");
+        console.warn("⚠️ This browser doesn't support persistence");
       } else if (err.code === 'unavailable') {
         // IndexedDB is not available (private browsing, etc.)
-        console.warn("IndexedDB not available - running in online-only mode");
+        console.warn("⚠️ IndexedDB not available - running in online-only mode");
       } else {
         // For any other error, disable persistence and continue
-        console.warn("Disabling persistence due to error:", err.code);
+        console.warn("⚠️ Disabling persistence due to error:", err.code);
       }
     });
 }

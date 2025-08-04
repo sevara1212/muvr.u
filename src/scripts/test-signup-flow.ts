@@ -1,6 +1,6 @@
 import { initializeApp } from "firebase/app";
-import { getAuth, createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
-import { getFirestore, doc, setDoc, collection } from "firebase/firestore";
+import { getAuth, createUserWithEmailAndPassword, updateProfile, signOut } from "firebase/auth";
+import { getFirestore, doc, setDoc, getDoc, collection } from "firebase/firestore";
 
 // Firebase configuration
 const firebaseConfig = {
@@ -16,9 +16,9 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-const testSignup = async () => {
+const testSignupFlow = async () => {
   try {
-    console.log('🧪 Testing signup functionality...');
+    console.log('🧪 Testing complete signup flow...');
     
     // Test data
     const testEmail = `test${Date.now()}@example.com`;
@@ -62,7 +62,7 @@ const testSignup = async () => {
       preferredAgeRange: { min: 14, max: 60 }
     };
     
-    await setDoc(doc(usersCollection, firebaseUser.uid), userData);
+    await setDoc(doc(usersCollection, firebaseUser.uid), userData, { merge: true });
     console.log('✅ Firestore user document created successfully');
     
     // Step 4: Verify the user document exists
@@ -81,16 +81,29 @@ const testSignup = async () => {
       console.log('❌ User document not found in Firestore');
     }
     
-    // Step 5: Clean up - delete the test user
-    console.log('\n🧹 Step 5: Cleaning up test user...');
+    // Step 5: Test that user can be authenticated
+    console.log('\n🔐 Step 5: Testing authentication...');
+    console.log(`   Current user: ${auth.currentUser?.email}`);
+    console.log(`   User ID: ${auth.currentUser?.uid}`);
+    
+    if (auth.currentUser) {
+      console.log('✅ User is properly authenticated');
+    } else {
+      console.log('❌ User is not authenticated');
+    }
+    
+    // Step 6: Clean up - delete the test user
+    console.log('\n🧹 Step 6: Cleaning up test user...');
+    await signOut(auth);
     await firebaseUser.delete();
     console.log('✅ Test user deleted successfully');
     
-    console.log('\n🎉 Signup test completed successfully!');
-    console.log('📝 The signup functionality should be working correctly.');
+    console.log('\n🎉 Signup flow test completed successfully!');
+    console.log('📝 The signup functionality should work correctly in the app.');
+    console.log('🚀 Users should be redirected to home page after successful signup.');
     
   } catch (error: any) {
-    console.error('❌ Signup test failed:', error);
+    console.error('❌ Signup flow test failed:', error);
     console.error('Error code:', error.code);
     console.error('Error message:', error.message);
     
@@ -105,8 +118,10 @@ const testSignup = async () => {
       console.log('💡 Email/password accounts are not enabled in Firebase.');
     } else if (error.code === 'permission-denied') {
       console.log('💡 Firestore permission denied. Check security rules.');
+    } else if (error.code === 'unavailable' || error.message?.includes('IndexedDB')) {
+      console.log('💡 Browser storage issue. This might be the IndexedDB error you encountered.');
     }
   }
 };
 
-testSignup(); 
+testSignupFlow(); 

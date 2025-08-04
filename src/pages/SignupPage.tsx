@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { getAuth, createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { Button } from "@/components/ui/button";
@@ -54,10 +54,13 @@ const SignupPage = () => {
 
   
   // Redirect if already logged in
-  if (currentUser) {
-    navigate("/");
-    return null;
-  }
+  useEffect(() => {
+    console.log('🔍 Checking currentUser state:', currentUser ? `Logged in as ${currentUser.name}` : 'Not logged in');
+    if (currentUser) {
+      console.log('✅ User already logged in, redirecting to home...');
+      navigate("/", { replace: true });
+    }
+  }, [currentUser, navigate]);
   
   // Password strength check
   const checkPasswordStrength = (pwd: string) => {
@@ -75,6 +78,14 @@ const SignupPage = () => {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Don't proceed if user is already logged in
+    if (currentUser) {
+      console.log('⚠️ User already logged in, redirecting to home...');
+      navigate("/", { replace: true });
+      return;
+    }
+    
     setFormError("");
     setLoading(true);
     
@@ -113,7 +124,11 @@ const SignupPage = () => {
       if (result.success) {
         toast.success("Account created successfully!");
         console.log('✅ Signup successful, navigating to home...');
-        navigate("/");
+        
+        // Force navigation to home page
+        setTimeout(() => {
+          navigate("/", { replace: true });
+        }, 100);
       } else {
         console.error('❌ Signup failed:', result.error);
         setFormError(result.error || "Failed to create account");

@@ -56,6 +56,8 @@ export function useFirebaseAuth() {
   // Listen for Firebase auth state changes
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      console.log('🔄 Auth state changed:', firebaseUser ? `User: ${firebaseUser.email}` : 'No user');
+      
       if (firebaseUser) {
         try {
           // Get user data from Firestore
@@ -67,6 +69,8 @@ export function useFirebaseAuth() {
             const userData = userSnap.data();
             const currentUser = { id: firebaseUser.uid, ...userData } as User;
             
+            console.log('✅ User authenticated successfully:', currentUser.name);
+            
             setAuthState({
               currentUser,
               firebaseUser,
@@ -74,11 +78,20 @@ export function useFirebaseAuth() {
               error: null
             });
             
+            // Show welcome back message for login
+            if (firebaseUser.metadata.lastSignInTime === firebaseUser.metadata.creationTime) {
+              // This is a new user (just signed up)
+              toast.success(`Welcome to Muvr, ${currentUser.name}! 🎉`);
+            } else {
+              // This is an existing user (logging in)
+              toast.success(`Welcome back, ${currentUser.name}! 👋`);
+            }
+            
             // Check for approved requests after user is loaded
             checkApprovedRequests(firebaseUser.uid);
           } else {
             // User doesn't exist in Firestore - this means they need to sign up properly
-            console.log('User not found in Firestore:', firebaseUser.email);
+            console.log('❌ User not found in Firestore:', firebaseUser.email);
             
             // Sign out the user since they don't have a proper profile
             await signOut(auth);
@@ -91,6 +104,7 @@ export function useFirebaseAuth() {
             });
           }
         } catch (error: any) {
+          console.error('❌ Error fetching user data:', error);
           setAuthState({
             currentUser: null,
             firebaseUser,
@@ -100,6 +114,7 @@ export function useFirebaseAuth() {
         }
       } else {
         // No user is signed in
+        console.log('👋 No user signed in');
         setAuthState({
           currentUser: null,
           firebaseUser: null,
@@ -132,7 +147,16 @@ export function useFirebaseAuth() {
     setAuthState(prev => ({ ...prev, loading: true, error: null }));
     
     try {
-      console.log('🚀 Starting signup process...');
+      console.log('🚀 Starting professional signup process...');
+      
+      // Validate input data
+      if (!email || !password || !name) {
+        throw new Error('Please fill in all required fields.');
+      }
+      
+      if (password.length < 8) {
+        throw new Error('Password must be at least 8 characters long.');
+      }
       
       // Create user in Firebase Auth
       console.log('🔐 Creating Firebase Auth user...');
@@ -166,18 +190,24 @@ export function useFirebaseAuth() {
       
       console.log('✅ Firestore user document created successfully');
       
-      // Update auth state
+      // Update auth state immediately
+      const currentUser = { id: firebaseUser.uid, ...userData } as User;
       setAuthState({
-        currentUser: { id: firebaseUser.uid, ...userData } as User,
+        currentUser,
         firebaseUser,
         loading: false,
         error: null
       });
       
-      console.log('🎉 Signup completed successfully!');
+      console.log('🎉 Professional signup completed successfully!');
+      console.log('👤 Current user set:', currentUser.name);
+      
+      // Show success toast
+      toast.success(`Welcome to Muvr, ${name}! 🎉`);
+      
       return { success: true };
     } catch (error: any) {
-      console.error('❌ Signup failed:', error);
+      console.error('❌ Professional signup failed:', error);
       
       let errorMessage = 'Failed to create account';
       
@@ -204,6 +234,9 @@ export function useFirebaseAuth() {
         error: errorMessage
       }));
       
+      // Show error toast
+      toast.error(errorMessage);
+      
       return { success: false, error: errorMessage };
     }
   };
@@ -213,15 +246,49 @@ export function useFirebaseAuth() {
     setAuthState(prev => ({ ...prev, loading: true, error: null }));
     
     try {
+      console.log('🔐 Starting professional login process...');
+      
+      // Validate input data
+      if (!email || !password) {
+        throw new Error('Please enter both email and password.');
+      }
+      
       await signInWithEmailAndPassword(auth, email, password);
+      
+      console.log('✅ Professional login successful');
+      
+      // Success toast will be shown by the auth state change listener
       return { success: true };
     } catch (error: any) {
+      console.error('❌ Professional login failed:', error);
+      
+      let errorMessage = 'Failed to sign in';
+      
+      // Provide specific error messages
+      if (error.code === 'auth/user-not-found') {
+        errorMessage = 'No account found with this email. Please sign up first.';
+      } else if (error.code === 'auth/wrong-password') {
+        errorMessage = 'Incorrect password. Please try again.';
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = 'Invalid email format. Please enter a valid email address.';
+      } else if (error.code === 'auth/too-many-requests') {
+        errorMessage = 'Too many failed attempts. Please try again later.';
+      } else if (error.code === 'auth/network-request-failed') {
+        errorMessage = 'Network error. Please check your internet connection and try again.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       setAuthState(prev => ({ 
         ...prev, 
         loading: false, 
-        error: error.message || 'Failed to sign in' 
+        error: errorMessage
       }));
-      return { success: false, error: error.message };
+      
+      // Show error toast
+      toast.error(errorMessage);
+      
+      return { success: false, error: errorMessage };
     }
   };
 

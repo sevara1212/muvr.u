@@ -6,7 +6,7 @@ import Layout from "@/components/Layout";
 import { formatDateTime, formatDuration } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { getRoomById, joinRoom, leaveRoom, getRoomParticipants, requestToJoinRoom } from "@/services/roomService";
+import { getRoomById, joinRoom, leaveRoom, getRoomParticipants, requestToJoinRoom, cancelJoinRequest, getPendingRequests } from "@/services/roomService";
 import { Room, User as UserType } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -20,6 +20,8 @@ const RoomDetailPage = () => {
   const [actionLoading, setActionLoading] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
   const [hasPendingRequest, setHasPendingRequest] = useState(false);
+  
+
 
   console.log('🚀 RoomDetailPage component loaded');
   console.log('📋 ID from params:', id);
@@ -51,6 +53,19 @@ const RoomDetailPage = () => {
             console.error("Error fetching participants:", participantsError);
             setParticipants([]);
           }
+          
+          // Check if current user has a pending request for this activity
+          if (currentUser) {
+            try {
+              const pendingRequests = await getPendingRequests(id);
+              const hasRequest = pendingRequests.some(request => request.userId === currentUser.id);
+              setHasPendingRequest(hasRequest);
+              console.log('📝 Pending request check:', hasRequest ? 'Found' : 'None');
+            } catch (error) {
+              console.error("Error checking pending requests:", error);
+              setHasPendingRequest(false);
+            }
+          }
         } else {
           console.log('❌ No room data found for ID:', id);
           toast.error(`Activity with ID ${id} not found`);
@@ -64,7 +79,7 @@ const RoomDetailPage = () => {
     };
 
     fetchRoomData();
-  }, [id]);
+  }, [id, currentUser]);
 
   const handleJoinLeave = async () => {
     if (!currentUser || !room) return;
@@ -94,12 +109,74 @@ const RoomDetailPage = () => {
     
     setActionLoading(true);
     try {
-      await requestToJoinRoom(room.id, currentUser.id);
+      console.log('📝 Sending join request for activity:', room.id);
+      
+      // Check if activity is full
+      const currentParticipants = room.participants?.length || 0;
+      const maxParticipants = room.maxParticipants || 0;
+      const isFull = currentParticipants >= maxParticipants;
+      
+      // Send the request and get the request ID
+      const requestId = await requestToJoinRoom(room.id, currentUser.id);
+      console.log('✅ Join request created with ID:', requestId);
+      
+      // Set the pending request state to true
       setHasPendingRequest(true);
-      toast.success("Join request sent successfully");
-    } catch (error) {
+      
+      if (isFull) {
+        toast.success("Join request sent! You'll be added to the waitlist.");
+      } else {
+        toast.success("Join request sent successfully");
+      }
+      
+      // Refresh room data to show updated participant count
+      const updatedRoom = await getRoomById(room.id);
+      if (updatedRoom) setRoom(updatedRoom);
+      
+    } catch (error: any) {
       console.error("Error requesting to join:", error);
-      toast.error("Failed to send join request");
+      
+      let errorMessage = "Failed to send join request";
+      
+      // Provide specific error messages
+      if (error.message?.includes('already a participant')) {
+        errorMessage = "You are already a participant in this activity";
+      } else if (error.message?.includes('already have a pending request')) {
+        errorMessage = "You already have a pending request for this activity";
+        // If user already has a pending request, set the state to true
+        setHasPendingRequest(true);
+      } else if (error.message?.includes('Activity not found')) {
+        errorMessage = "Activity not found. Please try refreshing the page.";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      toast.error(errorMessage);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleCancelRequest = async () => {
+    if (!currentUser || !room) return;
+    
+    setActionLoading(true);
+    try {
+      console.log('❌ Cancelling join request for activity:', room.id);
+      
+      // Find and cancel the pending request
+      await cancelJoinRequest(room.id, currentUser.id);
+      setHasPendingRequest(false);
+      
+      toast.success("Join request cancelled successfully");
+      
+      // Refresh room data
+      const updatedRoom = await getRoomById(room.id);
+      if (updatedRoom) setRoom(updatedRoom);
+      
+    } catch (error: any) {
+      console.error("Error cancelling join request:", error);
+      toast.error("Failed to cancel join request");
     } finally {
       setActionLoading(false);
     }
@@ -348,11 +425,11 @@ const RoomDetailPage = () => {
                       isUserJoined 
                         ? 'bg-red-500 hover:bg-red-600' 
                         : hasPendingRequest 
-                          ? 'bg-gray-400 hover:bg-gray-500 cursor-not-allowed' 
+                          ? 'bg-gray-400 hover:bg-gray-500' 
                           : 'bg-[#887DC0] hover:bg-[#887DC0]/90'
                     }`}
-                    disabled={isRoomFull && !isUserJoined || actionLoading || hasPendingRequest}
-                    onClick={isUserJoined ? handleJoinLeave : hasPendingRequest ? () => {} : handleRequestJoin}
+                    disabled={isRoomFull && !isUserJoined || actionLoading}
+                    onClick={isUserJoined ? handleJoinLeave : hasPendingRequest ? handleCancelRequest : handleRequestJoin}
                   >
                     {actionLoading 
                       ? "Processing..." 
@@ -363,6 +440,7 @@ const RoomDetailPage = () => {
                           : (isRoomFull ? "Activity Full" : "Request to Join"))}
                   </Button>
                 )}
+
                 {isUserHost && (
                   <Button 
                     className="flex-1 bg-[#1A1A72] hover:bg-[#1A1A72]/90 text-white"

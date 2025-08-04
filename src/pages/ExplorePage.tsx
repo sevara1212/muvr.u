@@ -25,6 +25,7 @@ const ExplorePage = () => {
       setLoading(true);
       try {
         let fetchedRooms: Room[];
+        
         if (sport && Object.values(SportType).includes(sport as SportType)) {
           setSelectedCategory(sport as SportType);
           fetchedRooms = await getActivitiesBySport(sport);
@@ -33,6 +34,7 @@ const ExplorePage = () => {
         } else {
           fetchedRooms = await getAllActivities();
         }
+        
         setRooms(fetchedRooms);
       } catch (error) {
         console.error("Error fetching rooms:", error);
@@ -70,11 +72,23 @@ const ExplorePage = () => {
   // Instant search (no debounce)
   const filteredRooms = rooms.filter(room => {
     const q = searchQuery.trim().toLowerCase();
-    if (!q) return selectedCategory ? room.sportType === selectedCategory : true;
-    const title = (room.title || "").toLowerCase();
-    const desc = (room.description || "").toLowerCase();
-    const city = (room.location?.city || "").toLowerCase();
-    return title.includes(q) || desc.includes(q) || city.includes(q);
+    
+    // If there's a search query, filter by search terms
+    if (q) {
+      const title = (room.title || "").toLowerCase();
+      const desc = (room.description || "").toLowerCase();
+      const city = (room.location?.city || "").toLowerCase();
+      return title.includes(q) || desc.includes(q) || city.includes(q);
+    }
+    
+    // If there's a selected category (from URL or state), filter by sport type
+    const currentCategory = sport || selectedCategory;
+    if (currentCategory) {
+      return room.sportType === currentCategory;
+    }
+    
+    // If no search and no category, show all
+    return true;
   });
 
   // Calculate recommendation score for an activity

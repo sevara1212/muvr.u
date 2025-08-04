@@ -22,19 +22,17 @@ const ActivitiesPage = () => {
   const [loading, setLoading] = useState(true);
   const [showAllActivities, setShowAllActivities] = useState(false);
   
+  // Load activities only once when component mounts
   useEffect(() => {
     const fetchRooms = async () => {
       try {
         setLoading(true);
-        let fetchedRooms: Room[] = [];
+        console.log('🚀 Loading all activities...');
         
-        if (selectedSport && selectedSport !== 'All') {
-          fetchedRooms = await getActivitiesBySport(selectedSport, 20);
-        } else {
-          fetchedRooms = await getAllActivities(20);
-        }
-        
+        // Load all activities once
+        const fetchedRooms = await getAllActivities();
         setAllRooms(fetchedRooms);
+        console.log(`📊 Loaded ${fetchedRooms.length} activities - will not reload`);
         
         // Get user's joined rooms if logged in
         if (currentUser) {
@@ -50,16 +48,22 @@ const ActivitiesPage = () => {
     };
     
     fetchRooms();
-  }, [currentUser, selectedSport]);
+  }, []); // Only run once when component mounts
   
-  // Get filtered upcoming rooms with recommendations
+  // Get filtered upcoming rooms sorted by date (ascending)
   const getFilteredUpcomingRooms = () => {
     const now = new Date();
     
     const filtered = allRooms
       .filter(room => {
-        // Filter by date (upcoming only)
-        const isUpcoming = new Date(room.dateTime) > now;
+        // Filter by sport type if selected
+        if (selectedSport && selectedSport !== 'All' && room.sportType !== selectedSport) {
+          return false;
+        }
+        
+        // Filter by date (upcoming only - today and future)
+        const activityDate = new Date(room.dateTime);
+        const isUpcoming = activityDate >= new Date(now.getFullYear(), now.getMonth(), now.getDate()); // Include today
         
         // Filter by gender preference if user is logged in
         let genderMatch = true;
@@ -82,12 +86,10 @@ const ActivitiesPage = () => {
         return isUpcoming && genderMatch && ageMatch;
       })
       .sort((a, b) => {
-        // Calculate recommendation score for each activity
-        const scoreA = calculateRecommendationScore(a);
-        const scoreB = calculateRecommendationScore(b);
-        
-        // Sort by recommendation score (highest first)
-        return scoreB - scoreA;
+        // Sort by date (ascending - earliest first)
+        const dateA = new Date(a.dateTime);
+        const dateB = new Date(b.dateTime);
+        return dateA.getTime() - dateB.getTime();
       });
     
     return filtered;
@@ -191,10 +193,11 @@ const ActivitiesPage = () => {
     }
   };
   
-  // Sport type selector handler
+  // Sport type selector handler - no re-fetching, just filter existing data
   const handleSportSelect = async (sport: string) => {
-    setSportLoading(true);
     setSelectedSport(sport);
+    console.log(`🏃 Filtering activities by sport: ${sport}`);
+    
     if (currentUser) {
       try {
         await updateUserSportType(currentUser.id, sport);
@@ -202,7 +205,6 @@ const ActivitiesPage = () => {
         toast.error("Failed to update your sport preference");
       }
     }
-    setSportLoading(false);
   };
   
   const upcomingRooms = getFilteredUpcomingRooms();

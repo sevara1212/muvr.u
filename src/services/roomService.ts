@@ -18,7 +18,8 @@ import {
   orderBy,
   limit,
   onSnapshot,
-  startAfter
+  startAfter,
+  deleteDoc
 } from "@/lib/firebase";
 import { FirebaseRoom, Room, User, JoinRequest, RequestStatus, ChatMessage } from "@/types";
 import { DocumentData } from "firebase/firestore";
@@ -218,7 +219,7 @@ export const getAllRooms = async (): Promise<Room[]> => {
 };
 
 // Get all activities from the activities_upl collection with caching and pagination
-export const getAllActivities = async (limitCount: number = 20, lastDoc?: any): Promise<Room[]> => {
+export const getAllActivities = async (limitCount?: number, lastDoc?: any): Promise<Room[]> => {
   const cacheKey = `all_activities_${limitCount}_${lastDoc?.id || 'first'}`;
   
   // Check cache first
@@ -229,10 +230,18 @@ export const getAllActivities = async (limitCount: number = 20, lastDoc?: any): 
   
   try {
     console.log('🚀 Fetching activities from Firestore...');
-    let q = query(activitiesCollection, orderBy('dateTime', 'desc'), limit(limitCount));
+    let q = query(activitiesCollection, orderBy('dateTime', 'asc')); // Sort by date ascending (earliest first)
+    
+    if (limitCount) {
+      q = query(activitiesCollection, orderBy('dateTime', 'asc'), limit(limitCount));
+    }
     
     if (lastDoc) {
-      q = query(activitiesCollection, orderBy('dateTime', 'desc'), startAfter(lastDoc), limit(limitCount));
+      if (limitCount) {
+        q = query(activitiesCollection, orderBy('dateTime', 'asc'), startAfter(lastDoc), limit(limitCount));
+      } else {
+        q = query(activitiesCollection, orderBy('dateTime', 'asc'), startAfter(lastDoc));
+      }
     }
     
     const querySnapshot = await getDocs(q);
@@ -298,7 +307,7 @@ export const getAllActivities = async (limitCount: number = 20, lastDoc?: any): 
 };
 
 // Get activities by sport type from the activities_upl collection with caching
-export const getActivitiesBySport = async (sportType: string, limitCount: number = 20): Promise<Room[]> => {
+export const getActivitiesBySport = async (sportType: string, limitCount?: number): Promise<Room[]> => {
   const cacheKey = `sport_activities_${sportType}_${limitCount}`;
   
   // Check cache first
@@ -309,12 +318,18 @@ export const getActivitiesBySport = async (sportType: string, limitCount: number
   
   try {
     console.log(`🚀 Fetching ${sportType} activities from Firestore...`);
-    const q = query(
+    let q = query(
       activitiesCollection, 
-      where("sportType", "==", sportType),
-      orderBy('dateTime', 'desc'),
-      limit(limitCount)
+      where("sportType", "==", sportType)
     );
+    
+    if (limitCount) {
+      q = query(
+        activitiesCollection, 
+        where("sportType", "==", sportType),
+        limit(limitCount)
+      );
+    }
     const querySnapshot = await getDocs(q);
     
     const activitiesData: DocumentData[] = [];
@@ -366,6 +381,13 @@ export const getActivitiesBySport = async (sportType: string, limitCount: number
         hostName: activity.hostName || fallbackHost.name
       };
     }) as Room[];
+    
+    // Sort by date (ascending - earliest first)
+    result.sort((a, b) => {
+      const dateA = new Date(a.dateTime);
+      const dateB = new Date(b.dateTime);
+      return dateA.getTime() - dateB.getTime();
+    });
     
     // Cache the result
     setCache(cacheKey, result);
@@ -562,25 +584,145 @@ export const updateUserSportType = async (userId: string, sportType: string): Pr
 }; 
 
 // Request to join a room
+// Cancel a join request
+export const cancelJoinRequest = async (roomId: string, userId: string): Promise<void> => {
+  try {
+    console.log('❌ Cancelling join request for activity:', roomId);
+    
+    // Find the pending request
+    const joinRequestsCollection = collection(db, "joinRequests");
+    const requestQuery = query(
+      joinRequestsCollection,
+      where("roomId", "==", roomId),
+      where("userId", "==", userId),
+      where("status", "==", "pending")
+    );
+    
+    const requestSnapshot = await getDocs(requestQuery);
+    
+    if (requestSnapshot.empty) {
+      throw new Error('No pending request found to cancel');
+    }
+    
+    // Delete the request document
+    const requestDoc = requestSnapshot.docs[0];
+    await deleteDoc(requestDoc.ref);
+    
+    console.log('✅ Join request cancelled successfully');
+    
+    // Remove request from activity's pending requests
+    let activityRef = doc(activitiesCollection, roomId);
+    let activityDoc = await getDoc(activityRef);
+    
+    if (!activityDoc.exists()) {
+      // Try rooms collection as fallback
+      activityRef = doc(roomsCollection, roomId);
+      activityDoc = await getDoc(activityRef);
+    }
+    
+    if (activityDoc.exists()) {
+      const activityData = activityDoc.data();
+      const pendingRequests = activityData.pendingRequests || [];
+      const updatedRequests = pendingRequests.filter((reqId: string) => reqId !== requestDoc.id);
+      
+      await updateDoc(activityRef, {
+        pendingRequests: updatedRequests
+      });
+    }
+    
+    // Remove request from user's pending requests
+    const userRef = doc(usersCollection, userId);
+    const userDoc = await getDoc(userRef);
+    
+    if (userDoc.exists()) {
+      const userData = userDoc.data();
+      const pendingRequests = userData.pendingRequests || [];
+      const updatedRequests = pendingRequests.filter((reqId: string) => reqId !== requestDoc.id);
+      
+      await updateDoc(userRef, {
+        pendingRequests: updatedRequests
+      });
+    }
+    
+    console.log('✅ Request removed from activity and user documents');
+    
+  } catch (error) {
+    console.error("❌ Error cancelling join request:", error);
+    throw error;
+  }
+};
+
 export const requestToJoinRoom = async (roomId: string, userId: string, message?: string): Promise<string> => {
   try {
+    console.log('📝 Processing join request for activity:', roomId);
+    
+    // First, check if the activity exists and get its current data
+    let activityRef = doc(activitiesCollection, roomId);
+    let activityDoc = await getDoc(activityRef);
+    
+    if (!activityDoc.exists()) {
+      // Try rooms collection as fallback
+      activityRef = doc(roomsCollection, roomId);
+      activityDoc = await getDoc(activityRef);
+      
+      if (!activityDoc.exists()) {
+        throw new Error('Activity not found');
+      }
+    }
+    
+    const activityData = activityDoc.data();
+    const currentParticipants = activityData.participants?.length || 0;
+    const maxParticipants = activityData.maxParticipants || 0;
+    
+    // Check if activity is full
+    if (currentParticipants >= maxParticipants) {
+      console.log('⚠️ Activity is full, but still allowing request');
+      // Even if full, we'll still create the request (for waitlist functionality)
+    }
+    
+    // Check if user is already a participant
+    if (activityData.participants?.includes(userId)) {
+      throw new Error('You are already a participant in this activity');
+    }
+    
+    // Check if user already has a pending request
+    const existingRequestsQuery = query(
+      collection(db, "joinRequests"),
+      where("roomId", "==", roomId),
+      where("userId", "==", userId),
+      where("status", "==", "pending")
+    );
+    const existingRequests = await getDocs(existingRequestsQuery);
+    
+    if (!existingRequests.empty) {
+      throw new Error('You already have a pending request for this activity');
+    }
+    
     // Create request document
     const requestData = {
       roomId,
       userId,
-      status: RequestStatus.Pending,
-      requestedAt: serverTimestamp(), // Always set this
+      status: "pending",
+      requestedAt: serverTimestamp(),
       message: message || ""
     };
     
     const requestRef = await addDoc(collection(db, "joinRequests"), requestData);
     const requestId = requestRef.id;
     
-    // Update room with pending request
-    const roomRef = doc(roomsCollection, roomId);
-    await updateDoc(roomRef, {
-      pendingRequests: arrayUnion(requestId)
-    });
+    console.log('✅ Join request created:', requestId);
+    
+    // Update activity with pending request (try activities collection first, then rooms)
+    try {
+      await updateDoc(doc(activitiesCollection, roomId), {
+        pendingRequests: arrayUnion(requestId)
+      });
+    } catch (error) {
+      // Fallback to rooms collection
+      await updateDoc(doc(roomsCollection, roomId), {
+        pendingRequests: arrayUnion(requestId)
+      });
+    }
     
     // Update user with pending request
     const userRef = doc(usersCollection, userId);
@@ -588,9 +730,10 @@ export const requestToJoinRoom = async (roomId: string, userId: string, message?
       pendingRequests: arrayUnion(requestId)
     });
     
+    console.log('✅ Join request processed successfully');
     return requestId;
   } catch (error) {
-    console.error("Error requesting to join room:", error);
+    console.error("❌ Error requesting to join room:", error);
     throw error;
   }
 };
@@ -604,7 +747,7 @@ export const getPendingRequests = async (roomId: string): Promise<JoinRequest[]>
       const q = query(
         collection(db, "joinRequests"),
         where("roomId", "==", roomId),
-        where("status", "==", RequestStatus.Pending),
+        where("status", "==", "pending"),
         orderBy("requestedAt", "desc")
       );
       querySnapshot = await getDocs(q);
@@ -613,7 +756,7 @@ export const getPendingRequests = async (roomId: string): Promise<JoinRequest[]>
       const q = query(
         collection(db, "joinRequests"),
         where("roomId", "==", roomId),
-        where("status", "==", RequestStatus.Pending)
+        where("status", "==", "pending")
       );
       querySnapshot = await getDocs(q);
     }
@@ -649,6 +792,8 @@ export const respondToJoinRequest = async (
   status: RequestStatus
 ): Promise<void> => {
   try {
+    console.log('📝 Responding to join request:', requestId, 'Status:', status);
+    
     // Update request status
     const requestRef = doc(db, "joinRequests", requestId);
     await updateDoc(requestRef, {
@@ -656,12 +801,36 @@ export const respondToJoinRequest = async (
       respondedAt: serverTimestamp()
     });
     
-    const roomRef = doc(roomsCollection, roomId);
+    // Try to update activity in activities collection first, then fallback to rooms
+    let activityRef = doc(activitiesCollection, roomId);
+    let activityDoc = await getDoc(activityRef);
+    
+    if (!activityDoc.exists()) {
+      // Fallback to rooms collection
+      activityRef = doc(roomsCollection, roomId);
+      activityDoc = await getDoc(activityRef);
+      
+      if (!activityDoc.exists()) {
+        throw new Error('Activity not found');
+      }
+    }
+    
     const userRef = doc(usersCollection, userId);
     
     if (status === RequestStatus.Approved) {
+      // Check if activity is full
+      const activityData = activityDoc.data();
+      const currentParticipants = activityData.participants?.length || 0;
+      const maxParticipants = activityData.maxParticipants || 0;
+      
+      if (currentParticipants >= maxParticipants) {
+        console.log('⚠️ Activity is full, but still approving request');
+        // Even if full, we'll still approve (for waitlist functionality)
+      }
+      
       // Add user to approved participants
-      await updateDoc(roomRef, {
+      await updateDoc(activityRef, {
+        participants: arrayUnion(userId),
         approvedParticipants: arrayUnion(userId),
         pendingRequests: arrayRemove(requestId)
       });
@@ -671,9 +840,11 @@ export const respondToJoinRequest = async (
         joinedRooms: arrayUnion(roomId),
         pendingRequests: arrayRemove(requestId)
       });
+      
+      console.log('✅ User approved and added to activity');
     } else {
       // Remove from pending requests
-      await updateDoc(roomRef, {
+      await updateDoc(activityRef, {
         pendingRequests: arrayRemove(requestId)
       });
       
@@ -681,8 +852,10 @@ export const respondToJoinRequest = async (
         pendingRequests: arrayRemove(requestId)
       });
     }
+    
+    console.log('✅ Join request response processed successfully');
   } catch (error) {
-    console.error("Error responding to join request:", error);
+    console.error("❌ Error responding to join request:", error);
     throw error;
   }
 };

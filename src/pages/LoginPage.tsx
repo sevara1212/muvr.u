@@ -37,25 +37,38 @@ const LoginPage = () => {
   }, [email, password, localError]);
   
   // Redirect if already logged in (but not if there's an error or loading)
-  if (currentUser && !authError && !authLoading) {
-    navigate("/");
-    return null;
-  }
+  useEffect(() => {
+    if (currentUser && !authError && !authLoading) {
+      console.log('✅ User already logged in, redirecting to home...');
+      navigate("/", { replace: true });
+    }
+  }, [currentUser, authError, authLoading, navigate]);
   
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Don't proceed if user is already logged in
+    if (currentUser) {
+      console.log('⚠️ User already logged in, redirecting to home...');
+      navigate("/", { replace: true });
+      return;
+    }
+    
     setLoading(true);
     
     try {
+      console.log('🔐 Starting login process...');
+      
       const result = await login(email, password);
       if (result.success) {
-        toast.success("Login successful!");
-        navigate("/");
+        console.log('✅ Login successful, navigating to home...');
+        // Navigation will be handled by the useEffect when auth state changes
       } else {
-        // Don't show toast here since the error will be handled by the auth state
-        console.log("Login failed:", result.error);
+        console.log("❌ Login failed:", result.error);
+        // Error toast is already shown by the auth hook
       }
     } catch (error: any) {
+      console.error('❌ Login error:', error);
       toast.error(error.message || "Failed to log in");
     } finally {
       setLoading(false);
