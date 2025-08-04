@@ -77,22 +77,31 @@ const SignupPage = () => {
     e.preventDefault();
     setFormError("");
     setLoading(true);
+    
+    // Validate password strength
     if (checkPasswordStrength(password)) {
       setPasswordError(checkPasswordStrength(password));
       setLoading(false);
       return;
     }
+    
+    // Validate gender selection
     if (!gender) {
       setFormError("Please select a gender.");
       setLoading(false);
       return;
     }
+    
+    // Validate age
     if (!age || +age < 14 || +age > 75) {
       setFormError("Age must be between 14 and 75.");
       setLoading(false);
       return;
     }
+    
     try {
+      console.log('📝 Starting signup process...');
+      
       const result = await signup(
         email,
         password,
@@ -100,16 +109,32 @@ const SignupPage = () => {
         gender || 'Other',
         age ? parseInt(age) : 14
       );
+      
       if (result.success) {
         toast.success("Account created successfully!");
+        console.log('✅ Signup successful, navigating to home...');
         navigate("/");
       } else {
+        console.error('❌ Signup failed:', result.error);
         setFormError(result.error || "Failed to create account");
         toast.error(result.error || "Failed to create account");
       }
     } catch (error: any) {
-      setFormError(error.message || "Failed to create account");
-      toast.error(error.message || "Failed to create account");
+      console.error('❌ Signup error:', error);
+      
+      let errorMessage = "Failed to create account";
+      
+      // Handle specific error types
+      if (error.message?.includes('IndexedDB') || error.message?.includes('persist')) {
+        errorMessage = "Browser storage issue. Please try refreshing the page or use a different browser.";
+      } else if (error.message?.includes('network') || error.message?.includes('connection')) {
+        errorMessage = "Network error. Please check your internet connection and try again.";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      setFormError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }

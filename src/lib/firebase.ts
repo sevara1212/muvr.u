@@ -48,10 +48,10 @@ if (isLocalhost && USE_FIREBASE_EMULATOR) {
 } else {
   console.log("Using live Firebase services");
   
-  // Enable offline persistence
+  // Enable offline persistence with better error handling
   enableIndexedDbPersistence(db)
     .then(() => {
-      console.log("Firestore persistence enabled");
+      console.log("Firestore persistence enabled successfully");
     })
     .catch((err) => {
       console.error("Error enabling persistence:", err);
@@ -61,6 +61,12 @@ if (isLocalhost && USE_FIREBASE_EMULATOR) {
       } else if (err.code === 'unimplemented') {
         // The current browser does not support all of the features required for persistence
         console.warn("This browser doesn't support persistence");
+      } else if (err.code === 'unavailable') {
+        // IndexedDB is not available (private browsing, etc.)
+        console.warn("IndexedDB not available - running in online-only mode");
+      } else {
+        // For any other error, disable persistence and continue
+        console.warn("Disabling persistence due to error:", err.code);
       }
     });
 }

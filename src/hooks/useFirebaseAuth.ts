@@ -132,14 +132,21 @@ export function useFirebaseAuth() {
     setAuthState(prev => ({ ...prev, loading: true, error: null }));
     
     try {
+      console.log('🚀 Starting signup process...');
+      
       // Create user in Firebase Auth
+      console.log('🔐 Creating Firebase Auth user...');
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const firebaseUser = userCredential.user;
       
+      console.log('✅ Firebase Auth user created:', firebaseUser.uid);
+      
       // Update profile with display name
+      console.log('👤 Updating user profile...');
       await updateProfile(firebaseUser, { displayName: name });
       
       // Create user document in Firestore
+      console.log('📄 Creating Firestore user document...');
       const userData = {
         name,
         email,
@@ -154,7 +161,10 @@ export function useFirebaseAuth() {
         preferredAgeRange: { min: 14, max: 60 }
       };
       
-      await setDoc(doc(usersCollection, firebaseUser.uid), userData);
+      // Use setDoc with merge option to handle offline scenarios better
+      await setDoc(doc(usersCollection, firebaseUser.uid), userData, { merge: true });
+      
+      console.log('✅ Firestore user document created successfully');
       
       // Update auth state
       setAuthState({
@@ -164,14 +174,37 @@ export function useFirebaseAuth() {
         error: null
       });
       
+      console.log('🎉 Signup completed successfully!');
       return { success: true };
     } catch (error: any) {
+      console.error('❌ Signup failed:', error);
+      
+      let errorMessage = 'Failed to create account';
+      
+      // Provide specific error messages
+      if (error.code === 'auth/email-already-in-use') {
+        errorMessage = 'This email is already registered. Please use a different email or try logging in.';
+      } else if (error.code === 'auth/weak-password') {
+        errorMessage = 'Password is too weak. Please use a stronger password with at least 8 characters, including uppercase, lowercase, number, and special character.';
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = 'Invalid email format. Please enter a valid email address.';
+      } else if (error.code === 'auth/operation-not-allowed') {
+        errorMessage = 'Email/password accounts are not enabled. Please contact support.';
+      } else if (error.code === 'auth/network-request-failed') {
+        errorMessage = 'Network error. Please check your internet connection and try again.';
+      } else if (error.code === 'unavailable' || error.message?.includes('IndexedDB')) {
+        errorMessage = 'Browser storage issue. Please try refreshing the page or use a different browser.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       setAuthState(prev => ({ 
         ...prev, 
         loading: false, 
-        error: error.message || 'Failed to create account' 
+        error: errorMessage
       }));
-      return { success: false, error: error.message };
+      
+      return { success: false, error: errorMessage };
     }
   };
 
