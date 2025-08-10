@@ -93,62 +93,77 @@ export function useFirebaseAuth() {
             // User doesn't exist in Firestore - this could be a race condition during signup
             console.log('⚠️ User not found in Firestore (might be during signup):', firebaseUser.email);
             
-            // Don't immediately sign out - this might be a race condition during signup
-            // Instead, set loading state and let the signup process complete
-            setAuthState({
-              currentUser: null,
-              firebaseUser,
-              loading: true,
-              error: null
-            });
+            // Check if this is a new user (recently created)
+            const isNewUser = firebaseUser.metadata.lastSignInTime === firebaseUser.metadata.creationTime;
+            const timeSinceCreation = Date.now() - new Date(firebaseUser.metadata.creationTime).getTime();
+            const isRecentlyCreated = timeSinceCreation < 5000; // 5 seconds
             
-            // Wait a bit and check again (for race condition during signup)
-            setTimeout(async () => {
-              try {
-                const userRef = doc(usersCollection, firebaseUser.uid);
-                const userSnap = await getDoc(userRef);
-                
-                if (userSnap.exists()) {
-                  // User was created, update state
-                  const userData = userSnap.data();
-                  const currentUser = { id: firebaseUser.uid, ...userData } as User;
+            if (isNewUser && isRecentlyCreated) {
+              // This is likely a race condition during signup, wait a bit and check again
+              console.log('⏳ New user detected, waiting for Firestore document...');
+              setAuthState({
+                currentUser: null,
+                firebaseUser,
+                loading: true,
+                error: null
+              });
+              
+              // Wait a bit and check again
+              setTimeout(async () => {
+                try {
+                  const userRef = doc(usersCollection, firebaseUser.uid);
+                  const userSnap = await getDoc(userRef);
                   
-                  console.log('✅ User profile found after delay:', currentUser.name);
-                  
+                  if (userSnap.exists()) {
+                    // User was created, update state
+                    const userData = userSnap.data();
+                    const currentUser = { id: firebaseUser.uid, ...userData } as User;
+                    
+                    console.log('✅ User profile found after delay:', currentUser.name);
+                    
+                    setAuthState({
+                      currentUser,
+                      firebaseUser,
+                      loading: false,
+                      error: null
+                    });
+                    
+                    toast.success(`Welcome to Muvr, ${currentUser.name}! 🎉`);
+                    checkApprovedRequests(firebaseUser.uid);
+                  } else {
+                    // User still doesn't exist, sign out
+                    console.log('❌ User profile not found after delay - signing out');
+                    await signOut(auth);
+                    setAuthState({
+                      currentUser: null,
+                      firebaseUser: null,
+                      loading: false,
+                      error: null
+                    });
+                  }
+                } catch (error) {
+                  console.error('❌ Error checking user after delay:', error);
+                  // On error, sign out to be safe
+                  await signOut(auth);
                   setAuthState({
-                    currentUser,
-                    firebaseUser,
+                    currentUser: null,
+                    firebaseUser: null,
                     loading: false,
                     error: null
                   });
-                  
-                  toast.success(`Welcome to Muvr, ${currentUser.name}! 🎉`);
-                  checkApprovedRequests(firebaseUser.uid);
-                } else {
-                  // User still doesn't exist, this is a real issue
-                  console.log('❌ User still not found in Firestore after delay');
-                  
-                  // Only sign out if this is not a new user (creation time check)
-                  const isNewUser = firebaseUser.metadata.lastSignInTime === firebaseUser.metadata.creationTime;
-                  const timeSinceCreation = Date.now() - new Date(firebaseUser.metadata.creationTime).getTime();
-                  const isRecentlyCreated = timeSinceCreation < 10000; // 10 seconds
-                  
-                                     if (!isNewUser || !isRecentlyCreated) {
-                     // Only set error if this is not during initial load
-                     console.log('❌ User profile not found - signing out');
-                     await signOut(auth);
-                     setAuthState({
-                       currentUser: null,
-                       firebaseUser: null,
-                       loading: false,
-                       error: null // Don't set error during initial load
-                     });
-                   }
                 }
-              } catch (error) {
-                console.error('❌ Error checking user after delay:', error);
-              }
-            }, 2000); // Wait 2 seconds for signup to complete
+              }, 1000); // Wait 1 second for signup to complete
+            } else {
+              // This is not a new user, sign them out
+              console.log('❌ User profile not found - signing out');
+              await signOut(auth);
+              setAuthState({
+                currentUser: null,
+                firebaseUser: null,
+                loading: false,
+                error: null
+              });
+            }
           }
         } catch (error: any) {
           console.error('❌ Error fetching user data:', error);
@@ -251,6 +266,9 @@ export function useFirebaseAuth() {
       
       // Show success toast
       toast.success(`Welcome to Muvr, ${name}! 🎉`);
+      
+      // Check for approved requests after user is loaded
+      checkApprovedRequests(firebaseUser.uid);
       
       return { success: true };
     } catch (error: any) {
