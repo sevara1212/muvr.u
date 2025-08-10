@@ -170,7 +170,6 @@ export function useFirebaseAuth() {
         });
       }
     });
-    });
 
     // Cleanup subscription
     return () => unsubscribe();
