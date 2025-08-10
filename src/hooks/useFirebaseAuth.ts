@@ -90,18 +90,65 @@ export function useFirebaseAuth() {
             // Check for approved requests after user is loaded
             checkApprovedRequests(firebaseUser.uid);
           } else {
-            // User doesn't exist in Firestore - this means they need to sign up properly
-            console.log('❌ User not found in Firestore:', firebaseUser.email);
+            // User doesn't exist in Firestore - this could be a race condition during signup
+            console.log('⚠️ User not found in Firestore (might be during signup):', firebaseUser.email);
             
-            // Sign out the user since they don't have a proper profile
-            await signOut(auth);
-            
+            // Don't immediately sign out - this might be a race condition during signup
+            // Instead, set loading state and let the signup process complete
             setAuthState({
               currentUser: null,
-              firebaseUser: null,
-              loading: false,
-              error: 'Account not found. Please sign up first.'
+              firebaseUser,
+              loading: true,
+              error: null
             });
+            
+            // Wait a bit and check again (for race condition during signup)
+            setTimeout(async () => {
+              try {
+                const userRef = doc(usersCollection, firebaseUser.uid);
+                const userSnap = await getDoc(userRef);
+                
+                if (userSnap.exists()) {
+                  // User was created, update state
+                  const userData = userSnap.data();
+                  const currentUser = { id: firebaseUser.uid, ...userData } as User;
+                  
+                  console.log('✅ User profile found after delay:', currentUser.name);
+                  
+                  setAuthState({
+                    currentUser,
+                    firebaseUser,
+                    loading: false,
+                    error: null
+                  });
+                  
+                  toast.success(`Welcome to Muvr, ${currentUser.name}! 🎉`);
+                  checkApprovedRequests(firebaseUser.uid);
+                } else {
+                  // User still doesn't exist, this is a real issue
+                  console.log('❌ User still not found in Firestore after delay');
+                  
+                  // Only sign out if this is not a new user (creation time check)
+                  const isNewUser = firebaseUser.metadata.lastSignInTime === firebaseUser.metadata.creationTime;
+                  const timeSinceCreation = Date.now() - new Date(firebaseUser.metadata.creationTime).getTime();
+                  const isRecentlyCreated = timeSinceCreation < 10000; // 10 seconds
+                  
+                                     if (!isNewUser || !isRecentlyCreated) {
+                     // Only set error if this is not during initial load
+                     console.log('❌ User profile not found - signing out');
+                     await signOut(auth);
+                     setAuthState({
+                       currentUser: null,
+                       firebaseUser: null,
+                       loading: false,
+                       error: null // Don't set error during initial load
+                     });
+                   }
+                }
+              } catch (error) {
+                console.error('❌ Error checking user after delay:', error);
+              }
+            }, 2000); // Wait 2 seconds for signup to complete
           }
         } catch (error: any) {
           console.error('❌ Error fetching user data:', error);
@@ -122,6 +169,7 @@ export function useFirebaseAuth() {
           error: null
         });
       }
+    });
     });
 
     // Cleanup subscription
@@ -215,7 +263,7 @@ export function useFirebaseAuth() {
       if (error.code === 'auth/email-already-in-use') {
         errorMessage = 'This email is already registered. Please use a different email or try logging in.';
       } else if (error.code === 'auth/weak-password') {
-        errorMessage = 'Password is too weak. Please use a stronger password with at least 8 characters, including uppercase, lowercase, number, and special character.';
+        errorMessage = 'Password is too weak. Please use a stronger password with at least 8 characters, including uppercase, lowercase, and number.';
       } else if (error.code === 'auth/invalid-email') {
         errorMessage = 'Invalid email format. Please enter a valid email address.';
       } else if (error.code === 'auth/operation-not-allowed') {

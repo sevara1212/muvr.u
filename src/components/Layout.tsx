@@ -9,8 +9,8 @@ interface LayoutProps {
 
 const Layout = ({ children, hideNav = false }: LayoutProps) => {
   return (
-    <div className="flex flex-col min-h-screen bg-[#35179d]">
-      <main className="flex-grow max-w-md mx-auto w-full px-4 py-4 pb-20">
+    <div className="flex flex-col min-h-screen bg-[#35179d] relative">
+      <main className="flex-grow max-w-md mx-auto w-full px-4 py-4 main-content overflow-hidden">
         {children}
       </main>
       

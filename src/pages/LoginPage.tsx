@@ -16,23 +16,26 @@ const LoginPage = () => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [hasAttemptedLogin, setHasAttemptedLogin] = useState(false);
   const navigate = useNavigate();
   const auth = getAuth();
   const { currentUser, login, error: authError, loading: authLoading } = useAuth();
   
   // Clear error when user starts typing
   useEffect(() => {
-    if (authError) {
+    // Only show authError if user has actually attempted to log in
+    if (authError && hasAttemptedLogin) {
       setLocalError(authError);
     } else {
       setLocalError(null);
     }
-  }, [authError]);
+  }, [authError, hasAttemptedLogin]);
 
   // Clear local error when user starts typing
   useEffect(() => {
     if (localError && (email || password)) {
       setLocalError(null);
+      setHasAttemptedLogin(false);
     }
   }, [email, password, localError]);
   
@@ -54,6 +57,7 @@ const LoginPage = () => {
       return;
     }
     
+    setHasAttemptedLogin(true);
     setLoading(true);
     
     try {

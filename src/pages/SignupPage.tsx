@@ -13,7 +13,7 @@ import { ActivityLevel, Gender } from "@/types";
 import { ArrowLeft } from 'lucide-react';
 import muvrLogo from '/public/images/muvr_logo.png';
 
-const strongPasswordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/;
+const strongPasswordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
 
 const passwordChecks = [
   {
@@ -31,10 +31,6 @@ const passwordChecks = [
   {
     label: "At least one lowercase letter",
     test: (pwd: string) => /[a-z]/.test(pwd),
-  },
-  {
-    label: "At least one special character (!@#$%^&*)",
-    test: (pwd: string) => /[!@#$%^&*]/.test(pwd),
   },
 ];
 
@@ -66,7 +62,7 @@ const SignupPage = () => {
   const checkPasswordStrength = (pwd: string) => {
     if (!pwd) return "";
     if (!strongPasswordRegex.test(pwd)) {
-      return "Password must be at least 8 characters, include uppercase, lowercase, number, and special character.";
+      return "Password must be at least 8 characters, include uppercase, lowercase, and number.";
     }
     return "";
   };
