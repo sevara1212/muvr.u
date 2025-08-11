@@ -9,10 +9,8 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { telegramApp } from "@/utils/telegramApp";
 import TelegramLogin from "./components/TelegramLogin";
 import Index from "./pages/Index";
-import ExplorePage from "./pages/ExplorePage";
 import CreateRoomPage from "./pages/CreateRoomPage";
 import RoomDetailPage from "./pages/RoomDetailPage";
-
 import EditRoomPage from "./pages/EditRoomPage";
 import ActivitiesPage from "./pages/ActivitiesPage";
 import ProfilePage from "./pages/ProfilePage";
@@ -21,6 +19,9 @@ import NotFoundWithLayout from "./pages/NotFoundWithLayout";
 import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
 import ChatPage from "./pages/ChatPage";
+import ChatsPage from "./pages/ChatsPage";
+import RequestsPage from "./pages/RequestsPage";
+import UpcomingPage from "./pages/UpcomingPage";
 
 const queryClient = new QueryClient();
 
@@ -67,18 +68,20 @@ const App = () => {
           <BrowserRouter>
             <Routes>
               <Route path="/" element={<Index />} />
-              <Route path="/explore" element={<ExplorePage />} />
               <Route path="/create" element={<CreateRoomPage />} />
               <Route path="/room/:id" element={<RoomDetailPage />} />
               <Route path="/join/:id" element={<RoomDetailPage />} />
               <Route path="/edit-room/:id" element={<EditRoomPage />} />
               <Route path="/activities" element={<ActivitiesPage />} />
+              <Route path="/upcoming" element={<UpcomingPage />} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/payment" element={<PaymentPage />} />
-              <Route path="/category/:sport" element={<ExplorePage />} />
+              <Route path="/category/:sport" element={<ActivitiesPage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/signup" element={<SignupPage />} />
               <Route path="/chat/:roomId" element={<ChatPage />} />
+              <Route path="/chats" element={<ChatsPage />} />
+              <Route path="/requests" element={<RequestsPage />} />
               <Route path="*" element={<NotFoundWithLayout />} />
             </Routes>
           </BrowserRouter>

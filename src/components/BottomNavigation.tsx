@@ -1,6 +1,6 @@
 
 import { useLocation, useNavigate } from "react-router-dom";
-import { Home, Search, Plus, Calendar, User } from "lucide-react";
+import { Home, Heart, Plus, Calendar, User } from "lucide-react";
 
 const BottomNavigation = () => {
   const navigate = useNavigate();
@@ -20,11 +20,11 @@ const BottomNavigation = () => {
       </button>
       
       <button 
-        onClick={() => navigate('/explore')}
-        className={`flex flex-col items-center justify-center flex-1 ${isActive('/explore') ? 'text-[#35179d]' : 'text-gray-400'}`}
+        onClick={() => navigate('/activities')}
+        className={`flex flex-col items-center justify-center flex-1 ${isActive('/activities') ? 'text-[#35179d]' : 'text-gray-400'}`}
       >
-        <Search size={20} />
-        <span className="text-xs mt-1">Explore</span>
+        <Heart size={20} />
+        <span className="text-xs mt-1">Activities</span>
       </button>
       
       <div className="flex-1 flex justify-center">
@@ -37,11 +37,11 @@ const BottomNavigation = () => {
       </div>
       
       <button 
-        onClick={() => navigate('/activities')}
-        className={`flex flex-col items-center justify-center flex-1 ${isActive('/activities') ? 'text-[#35179d]' : 'text-gray-400'}`}
+        onClick={() => navigate('/upcoming')}
+        className={`flex flex-col items-center justify-center flex-1 ${isActive('/upcoming') ? 'text-[#35179d]' : 'text-gray-400'}`}
       >
         <Calendar size={20} />
-        <span className="text-xs mt-1">Activities</span>
+        <span className="text-xs mt-1">Upcoming</span>
       </button>
       
       <button 

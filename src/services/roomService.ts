@@ -702,6 +702,7 @@ export const requestToJoinRoom = async (roomId: string, userId: string, message?
     const requestData = {
       roomId,
       userId,
+      hostId: activityData.hostId,
       status: "pending",
       requestedAt: serverTimestamp(),
       message: message || ""
@@ -739,14 +740,14 @@ export const requestToJoinRoom = async (roomId: string, userId: string, message?
 };
 
 // Get pending requests for a room
-export const getPendingRequests = async (roomId: string): Promise<JoinRequest[]> => {
+export const getPendingRequests = async (userId: string): Promise<JoinRequest[]> => {
   try {
     let querySnapshot;
     try {
       // Try to query with orderBy requestedAt
       const q = query(
         collection(db, "joinRequests"),
-        where("roomId", "==", roomId),
+        where("hostId", "==", userId),
         where("status", "==", "pending"),
         orderBy("requestedAt", "desc")
       );
@@ -755,7 +756,7 @@ export const getPendingRequests = async (roomId: string): Promise<JoinRequest[]>
       // Fallback: query without orderBy if requestedAt is missing
       const q = query(
         collection(db, "joinRequests"),
-        where("roomId", "==", roomId),
+        where("hostId", "==", userId),
         where("status", "==", "pending")
       );
       querySnapshot = await getDocs(q);
@@ -785,6 +786,72 @@ export const getPendingRequests = async (roomId: string): Promise<JoinRequest[]>
 };
 
 // Approve or reject a join request
+export const approveJoinRequest = async (requestId: string): Promise<void> => {
+  try {
+    // Get the request document
+    const requestRef = doc(db, 'joinRequests', requestId);
+    const requestSnap = await getDoc(requestRef);
+    
+    if (!requestSnap.exists()) {
+      throw new Error('Join request not found');
+    }
+    
+    const requestData = requestSnap.data();
+    const { roomId, userId } = requestData;
+    
+    // Update the request status to approved
+    await updateDoc(requestRef, {
+      status: RequestStatus.Approved,
+      respondedAt: serverTimestamp()
+    });
+    
+    // Add user to room's approved participants
+    const roomRef = doc(roomsCollection, roomId);
+    await updateDoc(roomRef, {
+      approvedParticipants: arrayUnion(userId),
+      participants: arrayUnion(userId),
+      pendingRequests: arrayRemove(requestId)
+    });
+    
+    console.log(`✅ Join request ${requestId} approved for user ${userId} in room ${roomId}`);
+  } catch (error) {
+    console.error('❌ Error approving join request:', error);
+    throw error;
+  }
+};
+
+export const rejectJoinRequest = async (requestId: string): Promise<void> => {
+  try {
+    // Get the request document
+    const requestRef = doc(db, 'joinRequests', requestId);
+    const requestSnap = await getDoc(requestRef);
+    
+    if (!requestSnap.exists()) {
+      throw new Error('Join request not found');
+    }
+    
+    const requestData = requestSnap.data();
+    const { roomId } = requestData;
+    
+    // Update the request status to rejected
+    await updateDoc(requestRef, {
+      status: RequestStatus.Rejected,
+      respondedAt: serverTimestamp()
+    });
+    
+    // Remove request from room's pending requests
+    const roomRef = doc(roomsCollection, roomId);
+    await updateDoc(roomRef, {
+      pendingRequests: arrayRemove(requestId)
+    });
+    
+    console.log(`❌ Join request ${requestId} rejected for room ${roomId}`);
+  } catch (error) {
+    console.error('❌ Error rejecting join request:', error);
+    throw error;
+  }
+};
+
 export const respondToJoinRequest = async (
   requestId: string, 
   roomId: string, 

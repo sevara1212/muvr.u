@@ -3,7 +3,7 @@ import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "@/components/Layout";
 import { ActivityLevel, SportType } from "@/types";
-import { ArrowLeft, Check, Camera, Edit2, X, Loader2 } from "lucide-react";
+import { ArrowLeft, Check, Camera, Edit2, X, Loader2, MessageCircle, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const ProfilePage = () => {
   const navigate = useNavigate();
@@ -161,33 +162,57 @@ const ProfilePage = () => {
             />
             <h1 className="text-xl font-bold text-white">Profile</h1>
           </div>
-          {isEditing ? (
-            <div className="flex gap-2">
+          <div className="flex items-center gap-2">
+            {/* Chats Button */}
+            <Button 
+              variant="outline" 
+              size="sm"
+              className="text-white border-white/30 hover:bg-white/10"
+              onClick={() => navigate('/chats')}
+            >
+              <MessageCircle className="h-4 w-4 mr-1" />
+              Chats
+            </Button>
+            
+            {/* Requests Button */}
+            <Button 
+              variant="outline" 
+              size="sm"
+              className="text-white border-white/30 hover:bg-white/10"
+              onClick={() => navigate('/requests')}
+            >
+              <Bell className="h-4 w-4 mr-1" />
+              Requests
+            </Button>
+            
+            {isEditing ? (
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setIsEditing(false)}
+                >
+                  <X className="h-4 w-4 mr-1" /> Cancel
+                </Button>
+                <Button 
+                  size="sm"
+                  className="bg-[#ff8800] text-white font-bold hover:bg-orange-600"
+                  onClick={handleSaveProfile}
+                  disabled={loading}
+                >
+                  {loading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Check className="h-4 w-4 mr-1" />} Save
+                </Button>
+              </div>
+            ) : (
               <Button 
                 variant="outline" 
                 size="sm" 
-                onClick={() => setIsEditing(false)}
+                onClick={() => setIsEditing(true)}
               >
-                <X className="h-4 w-4 mr-1" /> Cancel
+                <Edit2 className="h-4 w-4 mr-1" /> Edit
               </Button>
-              <Button 
-                size="sm"
-                className="bg-[#ff8800] text-white font-bold hover:bg-orange-600"
-                onClick={handleSaveProfile}
-                disabled={loading}
-              >
-                {loading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Check className="h-4 w-4 mr-1" />} Save
-              </Button>
-            </div>
-          ) : (
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => setIsEditing(true)}
-            >
-              <Edit2 className="h-4 w-4 mr-1" /> Edit
-            </Button>
-          )}
+            )}
+          </div>
         </div>
         
         {/* Profile Content */}
