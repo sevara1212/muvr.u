@@ -18,6 +18,7 @@ interface AuthContextType {
     age?: number
   ) => Promise<{ success: boolean; error?: string }>;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  loginWithTelegram: () => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<{ success: boolean; error?: string }>;
   resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
 }
@@ -30,6 +31,7 @@ const AuthContext = createContext<AuthContextType>({
   setCurrentUser: () => {},
   signup: async () => ({ success: false }),
   login: async () => ({ success: false }),
+  loginWithTelegram: async () => ({ success: false }),
   logout: async () => ({ success: false }),
   resetPassword: async () => ({ success: false })
 });

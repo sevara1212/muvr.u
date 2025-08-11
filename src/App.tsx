@@ -1,10 +1,13 @@
 
+import React from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { telegramApp } from "@/utils/telegramApp";
+import TelegramLogin from "./components/TelegramLogin";
 import Index from "./pages/Index";
 import ExplorePage from "./pages/ExplorePage";
 import CreateRoomPage from "./pages/CreateRoomPage";
@@ -21,33 +24,68 @@ import ChatPage from "./pages/ChatPage";
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/explore" element={<ExplorePage />} />
-            <Route path="/create" element={<CreateRoomPage />} />
-            <Route path="/room/:id" element={<RoomDetailPage />} />
-            <Route path="/join/:id" element={<RoomDetailPage />} />
-            <Route path="/edit-room/:id" element={<EditRoomPage />} />
-            <Route path="/activities" element={<ActivitiesPage />} />
-            <Route path="/profile" element={<ProfilePage />} />
-            <Route path="/payment" element={<PaymentPage />} />
-            <Route path="/category/:sport" element={<ExplorePage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/signup" element={<SignupPage />} />
-            <Route path="/chat/:roomId" element={<ChatPage />} />
-            <Route path="*" element={<NotFoundWithLayout />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
-    </AuthProvider>
-  </QueryClientProvider>
-);
+const App = () => {
+  // Initialize Telegram Mini App
+  React.useEffect(() => {
+    if (telegramApp.isTelegramApp()) {
+      console.log('🚀 Muvr Mini App launched in Telegram');
+      
+      // Set up Telegram-specific features
+      telegramApp.expand(); // Expand to full height
+      
+      // Set up closing confirmation
+      telegramApp.enableClosingConfirmation();
+      
+      // Listen for viewport changes
+      telegramApp.onEvent('viewportChanged', () => {
+        console.log('📱 Viewport changed');
+      });
+      
+      // Listen for theme changes
+      telegramApp.onEvent('themeChanged', () => {
+        console.log('🎨 Theme changed');
+        // Re-apply theme
+        const root = document.documentElement;
+        const themeParams = telegramApp.getThemeParams();
+        if (themeParams) {
+          root.style.setProperty('--tg-theme-bg-color', themeParams.bg_color);
+          root.style.setProperty('--tg-theme-text-color', themeParams.text_color);
+          root.style.setProperty('--tg-theme-button-color', themeParams.button_color);
+          root.style.setProperty('--tg-theme-button-text-color', themeParams.button_text_color);
+        }
+      });
+    }
+  }, []);
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <TelegramLogin />
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/explore" element={<ExplorePage />} />
+              <Route path="/create" element={<CreateRoomPage />} />
+              <Route path="/room/:id" element={<RoomDetailPage />} />
+              <Route path="/join/:id" element={<RoomDetailPage />} />
+              <Route path="/edit-room/:id" element={<EditRoomPage />} />
+              <Route path="/activities" element={<ActivitiesPage />} />
+              <Route path="/profile" element={<ProfilePage />} />
+              <Route path="/payment" element={<PaymentPage />} />
+              <Route path="/category/:sport" element={<ExplorePage />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/signup" element={<SignupPage />} />
+              <Route path="/chat/:roomId" element={<ChatPage />} />
+              <Route path="*" element={<NotFoundWithLayout />} />
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
+      </AuthProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;

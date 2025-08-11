@@ -12,6 +12,7 @@ import { auth, usersCollection, doc, setDoc, getDoc, collection, query, where, g
 import { User, ActivityLevel, RequestStatus } from '@/types';
 import { clearUserCache } from '@/services/chatService';
 import { toast } from 'sonner';
+import { telegramAuthService } from "@/services/telegramAuthService";
 
 interface AuthState {
   currentUser: User | null;
@@ -394,6 +395,50 @@ export function useFirebaseAuth() {
     }
   };
 
+  // Telegram authentication
+  const loginWithTelegram = async () => {
+    setAuthState(prev => ({ ...prev, loading: true, error: null }));
+    
+    try {
+      console.log('🔐 Starting Telegram authentication...');
+      
+      const result = await telegramAuthService.authenticateWithTelegram();
+      
+      if (result.success && result.user) {
+        console.log('✅ Telegram authentication successful');
+        
+        setAuthState({
+          currentUser: result.user,
+          firebaseUser: null, // No Firebase user for Telegram auth
+          loading: false,
+          error: null
+        });
+        
+        return { success: true };
+      } else {
+        console.log('❌ Telegram authentication failed:', result.error);
+        
+        setAuthState(prev => ({ 
+          ...prev, 
+          loading: false, 
+          error: result.error || 'Telegram authentication failed'
+        }));
+        
+        return { success: false, error: result.error };
+      }
+    } catch (error: any) {
+      console.error('❌ Telegram authentication error:', error);
+      
+      setAuthState(prev => ({ 
+        ...prev, 
+        loading: false, 
+        error: error.message || 'Telegram authentication failed'
+      }));
+      
+      return { success: false, error: error.message };
+    }
+  };
+
   return {
     ...authState,
     setCurrentUser,
@@ -401,5 +446,6 @@ export function useFirebaseAuth() {
     login,
     logout,
     resetPassword,
+    loginWithTelegram,
   };
 } 
