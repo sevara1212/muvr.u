@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { useRef } from "react";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, MapPin, Navigation } from "lucide-react";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,6 +37,9 @@ const CreateRoomPage = () => {
   const navigate = useNavigate();
   const { currentUser, loading } = useAuth();
   const [isPaid, setIsPaid] = useState(false);
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number; address: string } | null>(null);
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
   
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -64,6 +67,55 @@ const CreateRoomPage = () => {
   
   const selectedSport = watch("sportType");
   
+  // Get user's current location
+  const getCurrentLocation = () => {
+    setIsGettingLocation(true);
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          });
+          setIsGettingLocation(false);
+          toast.success('Location obtained!');
+        },
+        (error) => {
+          console.error('Error getting location:', error);
+          setIsGettingLocation(false);
+          toast.error('Could not get your location. Please select manually.');
+        }
+      );
+    } else {
+      setIsGettingLocation(false);
+      toast.error('Location services not available');
+    }
+  };
+
+  // Calculate distance between two points
+  const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
+    const R = 6371; // Earth's radius in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLng/2) * Math.sin(dLng/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+  };
+
+  // Handle location selection from Google Maps
+  const handleLocationSelect = (lat: number, lng: number, address: string) => {
+    setSelectedLocation({ lat, lng, address });
+    setValue("address", address);
+    
+    // Calculate distance if user location is available
+    if (userLocation) {
+      const distance = calculateDistance(userLocation.lat, userLocation.lng, lat, lng);
+      toast.info(`Distance from your location: ${distance.toFixed(1)} km`);
+    }
+  };
+  
   const onSubmit = async (data: CreateRoomForm) => {
     try {
       // Check if user is logged in
@@ -87,8 +139,8 @@ const CreateRoomPage = () => {
           address: data.address,
           city: data.city,
           locationLink: data.locationLink || "",
-          lat: 0, // Default values since we're not using maps
-          lng: 0
+          lat: selectedLocation?.lat || 0,
+          lng: selectedLocation?.lng || 0
         },
         hostId: currentUser.id,
         genderPreference: data.genderPreference || Gender.Both,
@@ -329,10 +381,35 @@ const CreateRoomPage = () => {
         {/* Location */}
         <div className="space-y-4">
           <div>
-            <Label htmlFor="address" className="text-white-force">Address</Label>
+            <Label className="text-white-force">Location Selection</Label>
+            <div className="space-y-3">
+              {/* Get Current Location Button */}
+              <Button
+                type="button"
+                variant="outline"
+                onClick={getCurrentLocation}
+                disabled={isGettingLocation}
+                className="w-full text-white border-white/30 hover:bg-white/20 bg-[#35179d]/20"
+              >
+                <Navigation className="h-4 w-4 mr-2" />
+                {isGettingLocation ? "Getting Location..." : "Use My Current Location"}
+              </Button>
+              
+              {userLocation && (
+                <div className="bg-white/10 rounded-lg p-3 border border-white/20">
+                  <p className="text-white/80 text-sm">
+                    📍 Your location: {userLocation.lat.toFixed(4)}, {userLocation.lng.toFixed(4)}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <Label htmlFor="address" className="text-white-force">Activity Address *</Label>
             <Input
               id="address"
-              placeholder="Activity location"
+              placeholder="Enter activity location or select from map"
               {...register("address", { required: "Address is required" })}
               className={`bg-white placeholder:text-gray-400 text-gray-900 ${errors.address ? "border-red-500" : ""}`}
             />
@@ -340,7 +417,7 @@ const CreateRoomPage = () => {
           </div>
           
           <div>
-            <Label htmlFor="city" className="text-white-force">City</Label>
+            <Label htmlFor="city" className="text-white-force">City *</Label>
             <Input
               id="city"
               placeholder="City"
@@ -351,17 +428,31 @@ const CreateRoomPage = () => {
           </div>
           
           <div>
-            <Label htmlFor="locationLink" className="text-white-force">Location Link (optional)</Label>
+            <Label htmlFor="locationLink" className="text-white-force">Google Maps Link *</Label>
             <Input
               id="locationLink"
-              placeholder="Google Maps or other location link"
-              {...register("locationLink")}
-              className="bg-white placeholder:text-gray-400 text-gray-900"
+              placeholder="https://maps.google.com/..."
+              {...register("locationLink", { required: "Google Maps link is required" })}
+              className={`bg-white placeholder:text-gray-400 text-gray-900 ${errors.locationLink ? "border-red-500" : ""}`}
             />
             <p className="text-xs text-white/70 mt-1">
-              Add a Google Maps link to help participants find the location
+              Required: Add a Google Maps link to help participants find the location
             </p>
+            {errors.locationLink && <p className="text-red-400 text-xs mt-1">{errors.locationLink.message}</p>}
           </div>
+
+          {selectedLocation && (
+            <div className="bg-white/10 rounded-lg p-3 border border-white/20">
+              <p className="text-white/80 text-sm">
+                📍 Selected: {selectedLocation.address}
+              </p>
+              {userLocation && (
+                <p className="text-white/60 text-xs mt-1">
+                  Distance: {calculateDistance(userLocation.lat, userLocation.lng, selectedLocation.lat, selectedLocation.lng).toFixed(1)} km
+                </p>
+              )}
+            </div>
+          )}
         </div>
         
         {/* Payment Option */}

@@ -105,7 +105,7 @@ const UpcomingPage: React.FC = () => {
             onClick={() => navigate('/activities')}
             variant="outline"
             size="sm"
-            className="text-white border-white/30 hover:bg-white/20"
+            className="text-white border-white/30 hover:bg-white/20 bg-[#35179d]/20 font-medium"
           >
             Discover More
           </Button>

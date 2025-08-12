@@ -49,7 +49,7 @@ const BottomNavigation = () => {
         className={`flex flex-col items-center justify-center flex-1 ${isActive('/profile') ? 'text-[#35179d]' : 'text-gray-400'}`}
       >
         <User size={20} />
-        <span className="text-xs mt-1">Profile</span>
+        <span className="text-xs mt-1">Chats</span>
       </button>
     </div>
   );

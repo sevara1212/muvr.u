@@ -57,6 +57,7 @@ const ActivityCard: React.FC<ActivityCardProps> = ({
   const [dragStartX, setDragStartX] = useState<number | null>(null);
   const [dragDelta, setDragDelta] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
+  const [hasDragged, setHasDragged] = useState(false);
 
   const spotsLeft = activity.maxParticipants - (activity.participants?.length || 0);
   const capacityPercentage = ((activity.participants?.length || 0) / activity.maxParticipants) * 100;
@@ -85,50 +86,78 @@ const ActivityCard: React.FC<ActivityCardProps> = ({
 
   // Touch handlers
   const handleTouchStart = (e: React.TouchEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     setDragStartX(e.touches[0].clientX);
     setIsDragging(true);
+    setHasDragged(false);
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     if (dragStartX !== null) {
-      setDragDelta(e.touches[0].clientX - dragStartX);
+      const currentX = e.touches[0].clientX;
+      const delta = currentX - dragStartX;
+      setDragDelta(delta);
+      if (Math.abs(delta) > 5) {
+        setHasDragged(true);
+      }
     }
   };
 
-  const handleTouchEnd = () => {
-    if (dragDelta > 80) {
-      onSwipeRight();
-    } else if (dragDelta < -80) {
-      onSwipeLeft();
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (Math.abs(dragDelta) > 30) {
+      if (dragDelta > 0) {
+        onSwipeRight();
+      } else {
+        onSwipeLeft();
+      }
     }
     setDragStartX(null);
     setDragDelta(0);
     setIsDragging(false);
+    setHasDragged(false);
   };
 
   // Mouse handlers
   const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     setDragStartX(e.clientX);
     setIsDragging(true);
+    setHasDragged(false);
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
   };
 
   const handleMouseMove = (e: MouseEvent) => {
+    e.preventDefault();
     if (dragStartX !== null) {
-      setDragDelta(e.clientX - dragStartX);
+      const currentX = e.clientX;
+      const delta = currentX - dragStartX;
+      setDragDelta(delta);
+      if (Math.abs(delta) > 5) {
+        setHasDragged(true);
+      }
     }
   };
 
-  const handleMouseUp = () => {
-    if (dragDelta > 80) {
-      onSwipeRight();
-    } else if (dragDelta < -80) {
-      onSwipeLeft();
+  const handleMouseUp = (e: MouseEvent) => {
+    e.preventDefault();
+    if (Math.abs(dragDelta) > 30) {
+      if (dragDelta > 0) {
+        onSwipeRight();
+      } else {
+        onSwipeLeft();
+      }
     }
     setDragStartX(null);
     setDragDelta(0);
     setIsDragging(false);
+    setHasDragged(false);
     window.removeEventListener('mousemove', handleMouseMove);
     window.removeEventListener('mouseup', handleMouseUp);
   };
@@ -140,16 +169,37 @@ const ActivityCard: React.FC<ActivityCardProps> = ({
     };
   }, []);
 
-  return (
+  // Prevent scrolling during swipes
+  React.useEffect(() => {
+    const preventScroll = (e: TouchEvent) => {
+      if (isDragging) {
+        e.preventDefault();
+      }
+    };
+
+    document.addEventListener('touchmove', preventScroll, { passive: false });
+    
+    return () => {
+      document.removeEventListener('touchmove', preventScroll);
+    };
+  }, [isDragging]);
+
+    return (
     <Card 
       ref={cardRef}
-      className="w-full max-w-sm mx-auto bg-white rounded-3xl shadow-2xl border-0 overflow-hidden cursor-pointer select-none"
+      className="w-full max-w-xs mx-auto bg-white rounded-3xl shadow-2xl border-0 overflow-hidden cursor-grab active:cursor-grabbing select-none touch-none"
       style={{
         transform: `translateX(${dragDelta}px) rotate(${dragDelta / 20}deg)`,
         transition: isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         boxShadow: isDragging ? '0 25px 50px -12px rgba(0, 0, 0, 0.25)' : '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+        opacity: isDragging ? 0.9 : 1,
+        touchAction: 'none',
       }}
-      onClick={onTap}
+      onClick={(e) => {
+        if (!hasDragged) {
+          onTap();
+        }
+      }}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
@@ -320,6 +370,8 @@ const ActivitiesPage: React.FC = () => {
     applyFilters();
   }, [activities, filters]);
 
+
+
   const getCurrentLocation = () => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -417,31 +469,29 @@ const ActivitiesPage: React.FC = () => {
   };
 
   const handleSwipeRight = async () => {
-    if (currentIndex >= activities.length) return;
+    if (currentIndex >= filteredActivities.length) return;
     
-    const activity = activities[currentIndex];
+    const activity = filteredActivities[currentIndex];
     setSwipedActivities(prev => new Set([...prev, activity.id]));
     
-    toast.success(`Interested in ${activity.title}!`);
-    
+    // Move to next card and reset details view
     setCurrentIndex(prev => prev + 1);
     setShowDetails(false);
   };
 
   const handleSwipeLeft = () => {
-    if (currentIndex >= activities.length) return;
+    if (currentIndex >= filteredActivities.length) return;
     
-    const activity = activities[currentIndex];
+    const activity = filteredActivities[currentIndex];
     setSwipedActivities(prev => new Set([...prev, activity.id]));
     
-    toast.info(`Passed on ${activity.title}`);
-    
+    // Move to next card and reset details view
     setCurrentIndex(prev => prev + 1);
     setShowDetails(false);
   };
 
   const handleTap = () => {
-    if (currentIndex >= activities.length) return;
+    if (currentIndex >= filteredActivities.length) return;
     setShowDetails(!showDetails);
   };
 
@@ -525,16 +575,19 @@ const ActivitiesPage: React.FC = () => {
 
   return (
     <Layout>
-      <div className="min-h-screen bg-[#35179d] py-6">
+      <div className="min-h-screen bg-[#35179d] py-6 overflow-hidden" style={{ touchAction: 'none', userSelect: 'none' }}>
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-xl font-bold text-white">Discover Activities</h1>
+          <div>
+            <h1 className="text-xl font-bold text-white mb-1">Discover Activities</h1>
+            <p className="text-white/70 text-xs">Swipe to find your next adventure</p>
+          </div>
           <Dialog open={showFilters} onOpenChange={setShowFilters}>
             <DialogTrigger asChild>
               <Button
                 variant="outline"
                 size="sm"
-                className="text-white border-white/30 hover:bg-white/20 backdrop-blur-sm bg-[#35179d]/20"
+                className="text-white border-white/30 hover:bg-white/20 backdrop-blur-sm bg-[#35179d]/20 transition-all duration-200 hover:scale-105"
               >
                 <SlidersHorizontal size={20} className="mr-2" />
                 Filters
@@ -674,7 +727,7 @@ const ActivitiesPage: React.FC = () => {
         </div>
 
         {/* Activity Card */}
-        <div className="flex justify-center mb-8">
+        <div className="flex justify-center mb-6 touch-none">
           <div className="relative">
             <ActivityCard
               activity={currentActivity}
@@ -685,30 +738,32 @@ const ActivitiesPage: React.FC = () => {
             />
             
             {/* Swipe Instructions */}
-            <div className="absolute -bottom-12 left-1/2 transform -translate-x-1/2 text-center">
-              <p className="text-white/60 text-sm">Swipe left to pass • Swipe right to join</p>
+            <div className="absolute -bottom-16 left-1/2 transform -translate-x-1/2 text-center">
+              <div className="bg-white/20 backdrop-blur-sm rounded-full px-3 py-1.5 border border-white/30">
+                <p className="text-white font-medium text-xs">Swipe left to pass • Swipe right to join</p>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Quick Actions */}
-        <div className="flex justify-center gap-6">
+        <div className="flex justify-center gap-6 mb-6 touch-none">
           <Button
             variant="outline"
             size="lg"
-            className="rounded-full w-20 h-20 p-0 border-2 border-red-400 hover:border-red-500 hover:bg-red-500/20 text-red-400 backdrop-blur-sm shadow-lg"
+            className="rounded-full w-16 h-16 p-0 border-2 border-red-400 hover:border-red-500 hover:bg-red-500/20 text-red-400 backdrop-blur-sm shadow-lg transition-all duration-200 hover:scale-105"
             onClick={handleSwipeLeft}
           >
-            <X size={28} />
+            <X size={24} />
           </Button>
           
           <Button
             variant="outline"
             size="lg"
-            className="rounded-full w-20 h-20 p-0 border-2 border-green-400 hover:border-green-500 hover:bg-green-500/20 text-green-400 backdrop-blur-sm shadow-lg"
+            className="rounded-full w-16 h-16 p-0 border-2 border-green-400 hover:border-green-500 hover:bg-green-500/20 text-green-400 backdrop-blur-sm shadow-lg transition-all duration-200 hover:scale-105"
             onClick={handleSwipeRight}
           >
-            <Heart size={28} />
+            <Heart size={24} />
           </Button>
         </div>
       </div>

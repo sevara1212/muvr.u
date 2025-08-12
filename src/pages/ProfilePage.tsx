@@ -171,115 +171,157 @@ const ProfilePage = () => {
     <Layout>
       <div className="min-h-screen bg-[#35179d] py-6">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-8">
           <div className="flex items-center">
             <ArrowLeft 
               size={20} 
-              className="mr-3 cursor-pointer text-white" 
+              className="mr-3 cursor-pointer text-white hover:text-white/80 transition-colors" 
               onClick={() => navigate(-1)}
             />
-            <h1 className="text-xl font-bold text-white">Chats</h1>
+            <div>
+              <h1 className="text-2xl font-bold text-white mb-1">Chats</h1>
+              <p className="text-white/70 text-sm">Stay connected with your activities</p>
+            </div>
           </div>
           
           {/* Profile Button */}
           <Button 
             variant="outline" 
             size="sm"
-            className="text-white border-white/30 hover:bg-white/10 rounded-full w-10 h-10 p-0"
+            className="text-white border-white/30 hover:bg-white/20 bg-[#35179d]/20 rounded-full w-12 h-12 p-0 transition-all duration-200 hover:scale-105 shadow-lg"
             onClick={() => navigate('/profile-settings')}
           >
-            <User className="h-4 w-4" />
+            <User className="h-5 w-5" />
           </Button>
         </div>
         
         {/* Chats Content */}
-        <div className="space-y-4">
+        <div className="space-y-6">
           {/* Requests Section */}
-          <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/20">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-lg font-semibold text-white">Join Requests</h3>
-              <Badge variant="outline" className="text-white border-white/30">
-                2 pending
-              </Badge>
+          <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 shadow-lg">
+            <div className="mb-4">
+              <h3 className="text-xl font-bold text-white mb-1">Requests</h3>
+              <p className="text-white/70 text-sm">Manage your requests</p>
             </div>
-            <p className="text-white/70 text-sm mb-3">
-              You have pending requests to join your activities
-            </p>
-            <Button 
-              variant="outline"
-              className="w-full text-white border-white/30 hover:bg-white/20 bg-[#35179d]/20"
-              onClick={() => navigate('/requests')}
-            >
-              <Bell className="h-4 w-4 mr-2" />
-              View Requests
-            </Button>
+            
+            <div className="space-y-3">
+              {/* Join Requests Received */}
+              <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-semibold text-white text-sm">Join Requests</h4>
+                  <Badge variant="outline" className="text-white border-white/30 bg-white/10 text-xs">
+                    2 pending
+                  </Badge>
+                </div>
+                <p className="text-white/70 text-xs mb-3">
+                  Requests sent to your activities
+                </p>
+                <Button 
+                  variant="outline"
+                  size="sm"
+                  className="w-full text-white border-white/30 hover:bg-white/20 bg-[#35179d]/20 transition-all duration-200 hover:scale-105"
+                  onClick={() => navigate('/requests')}
+                >
+                  <Bell className="h-3 w-3 mr-2" />
+                  View Requests
+                </Button>
+              </div>
+
+              {/* Join Requests Sent */}
+              <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-semibold text-white text-sm">Sent Requests</h4>
+                  <Badge variant="outline" className="text-white border-white/30 bg-white/10 text-xs">
+                    3 sent
+                  </Badge>
+                </div>
+                <p className="text-white/70 text-xs mb-3">
+                  Requests you've sent to join activities
+                </p>
+                <Button 
+                  variant="outline"
+                  size="sm"
+                  className="w-full text-white border-white/30 hover:bg-white/20 bg-[#35179d]/20 transition-all duration-200 hover:scale-105"
+                  onClick={() => navigate('/sent-requests')}
+                >
+                  <Bell className="h-3 w-3 mr-2" />
+                  View Sent
+                </Button>
+              </div>
+            </div>
           </div>
 
           {/* Recent Chats */}
-          <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/20">
-            <h3 className="text-lg font-semibold text-white mb-3">Recent Chats</h3>
+          <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 shadow-lg">
+            <div className="mb-4">
+              <h3 className="text-xl font-bold text-white mb-1">Recent Chats</h3>
+              <p className="text-white/70 text-sm">Your activity conversations</p>
+            </div>
             
             {joinedActivities.length === 0 ? (
-              <div className="text-center py-6">
-                <MessageCircle size={32} className="text-white/50 mx-auto mb-2" />
-                <p className="text-white/70 text-sm">No activity chats yet</p>
-                <p className="text-white/50 text-xs">Join an activity to start chatting!</p>
+              <div className="text-center py-8">
+                <MessageCircle size={40} className="text-white/50 mx-auto mb-3" />
+                <p className="text-white/80 text-base font-medium mb-1">No activity chats yet</p>
+                <p className="text-white/60 text-sm">Join an activity to start chatting!</p>
               </div>
             ) : (
               <div className="space-y-3">
                 {joinedActivities.slice(0, 3).map((activity) => (
                   <div 
                     key={activity.id}
-                    className="flex items-center gap-3 p-3 bg-white/5 rounded-lg cursor-pointer hover:bg-white/10 transition-colors"
+                    className="flex items-center gap-4 p-4 bg-white/5 rounded-xl cursor-pointer hover:bg-white/10 transition-all duration-200 hover:scale-[1.02] border border-white/10"
                     onClick={() => navigate(`/chat/${activity.id}`)}
                   >
-                    <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-                      <span className="text-lg">{getSportIcon(activity.sportType)}</span>
+                    <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center shadow-lg">
+                      <span className="text-xl">{getSportIcon(activity.sportType)}</span>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h4 className="font-medium text-white truncate">{activity.title}</h4>
-                      <p className="text-white/60 text-xs truncate">
+                      <h4 className="font-semibold text-white truncate text-base">{activity.title}</h4>
+                      <p className="text-white/70 text-sm truncate">
                         {new Date(activity.dateTime).toLocaleDateString()}
                       </p>
                     </div>
-                    <MessageCircle size={16} className="text-white/50" />
+                    <MessageCircle size={18} className="text-white/60" />
                   </div>
                 ))}
                 
-                                 {joinedActivities.length > 3 && (
-                   <Button 
-                     variant="outline"
-                     className="w-full text-white border-white/30 hover:bg-white/20 bg-[#35179d]/20"
-                     onClick={() => navigate('/chats')}
-                   >
-                     View All Chats ({joinedActivities.length})
-                   </Button>
-                 )}
+                {joinedActivities.length > 3 && (
+                  <Button 
+                    variant="outline"
+                    className="w-full text-white border-white/30 hover:bg-white/20 bg-[#35179d]/20 transition-all duration-200 hover:scale-105 mt-4"
+                    onClick={() => navigate('/chats')}
+                  >
+                    View All Chats ({joinedActivities.length})
+                  </Button>
+                )}
               </div>
             )}
           </div>
 
           {/* Quick Actions */}
-          <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/20">
-            <h3 className="text-lg font-semibold text-white mb-3">Quick Actions</h3>
-                         <div className="grid grid-cols-2 gap-3">
-               <Button 
-                 variant="outline"
-                 className="text-white border-white/30 hover:bg-white/20 bg-[#35179d]/20"
-                 onClick={() => navigate('/activities')}
-               >
-                 <Heart className="h-4 w-4 mr-2" />
-                 Discover
-               </Button>
-               <Button 
-                 variant="outline"
-                 className="text-white border-white/30 hover:bg-white/20 bg-[#35179d]/20"
-                 onClick={() => navigate('/create')}
-               >
-                 <Plus className="h-4 w-4 mr-2" />
-                 Create
-               </Button>
-             </div>
+          <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 shadow-lg">
+            <div className="mb-4">
+              <h3 className="text-xl font-bold text-white mb-1">Quick Actions</h3>
+              <p className="text-white/70 text-sm">Get started quickly</p>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <Button 
+                variant="outline"
+                className="text-white border-white/30 hover:bg-white/20 bg-[#35179d]/20 transition-all duration-200 hover:scale-105 h-12"
+                onClick={() => navigate('/activities')}
+              >
+                <Heart className="h-5 w-5 mr-2" />
+                Discover
+              </Button>
+              <Button 
+                variant="outline"
+                className="text-white border-white/30 hover:bg-white/20 bg-[#35179d]/20 transition-all duration-200 hover:scale-105 h-12"
+                onClick={() => navigate('/create')}
+              >
+                <Plus className="h-5 w-5 mr-2" />
+                Create
+              </Button>
+            </div>
           </div>
         </div>
       </div>

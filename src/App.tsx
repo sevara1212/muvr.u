@@ -14,6 +14,7 @@ import RoomDetailPage from "./pages/RoomDetailPage";
 import EditRoomPage from "./pages/EditRoomPage";
 import ActivitiesPage from "./pages/ActivitiesPage";
 import ProfilePage from "./pages/ProfilePage";
+import ProfileSettingsPage from "./pages/ProfileSettingsPage";
 import PaymentPage from "./pages/PaymentPage";
 import NotFoundWithLayout from "./pages/NotFoundWithLayout";
 import LoginPage from "./pages/LoginPage";
@@ -21,6 +22,7 @@ import SignupPage from "./pages/SignupPage";
 import ChatPage from "./pages/ChatPage";
 import ChatsPage from "./pages/ChatsPage";
 import RequestsPage from "./pages/RequestsPage";
+import SentRequestsPage from "./pages/SentRequestsPage";
 import UpcomingPage from "./pages/UpcomingPage";
 
 const queryClient = new QueryClient();
@@ -75,6 +77,7 @@ const App = () => {
               <Route path="/activities" element={<ActivitiesPage />} />
               <Route path="/upcoming" element={<UpcomingPage />} />
               <Route path="/profile" element={<ProfilePage />} />
+              <Route path="/profile-settings" element={<ProfileSettingsPage />} />
               <Route path="/payment" element={<PaymentPage />} />
               <Route path="/category/:sport" element={<ActivitiesPage />} />
               <Route path="/login" element={<LoginPage />} />
@@ -82,6 +85,7 @@ const App = () => {
               <Route path="/chat/:roomId" element={<ChatPage />} />
               <Route path="/chats" element={<ChatsPage />} />
               <Route path="/requests" element={<RequestsPage />} />
+              <Route path="/sent-requests" element={<SentRequestsPage />} />
               <Route path="*" element={<NotFoundWithLayout />} />
             </Routes>
           </BrowserRouter>
