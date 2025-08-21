@@ -169,21 +169,6 @@ const ActivityCard: React.FC<ActivityCardProps> = ({
     };
   }, []);
 
-  // Prevent scrolling during swipes
-  React.useEffect(() => {
-    const preventScroll = (e: TouchEvent) => {
-      if (isDragging) {
-        e.preventDefault();
-      }
-    };
-
-    document.addEventListener('touchmove', preventScroll, { passive: false });
-    
-    return () => {
-      document.removeEventListener('touchmove', preventScroll);
-    };
-  }, [isDragging]);
-
     return (
     <Card 
       ref={cardRef}
@@ -369,8 +354,6 @@ const ActivitiesPage: React.FC = () => {
   useEffect(() => {
     applyFilters();
   }, [activities, filters]);
-
-
 
   const getCurrentLocation = () => {
     if (navigator.geolocation) {
@@ -575,12 +558,21 @@ const ActivitiesPage: React.FC = () => {
 
   return (
     <Layout>
-      <div className="min-h-screen bg-[#35179d] py-6 overflow-hidden" style={{ touchAction: 'none', userSelect: 'none' }}>
+      <style jsx>{`
+        .swipe-container {
+          touch-action: none;
+          -webkit-user-select: none;
+          -moz-user-select: none;
+          -ms-user-select: none;
+          user-select: none;
+        }
+      `}</style>
+      <div className="min-h-screen bg-[#35179d] py-6 overflow-hidden swipe-container">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-xl font-bold text-white mb-1">Discover Activities</h1>
-            <p className="text-white/70 text-xs">Swipe to find your next adventure</p>
+            <h1 className="text-2xl font-bold text-white mb-1">Discover Activities</h1>
+            <p className="text-white/70 text-sm">Find your next adventure</p>
           </div>
           <Dialog open={showFilters} onOpenChange={setShowFilters}>
             <DialogTrigger asChild>
@@ -727,7 +719,7 @@ const ActivitiesPage: React.FC = () => {
         </div>
 
         {/* Activity Card */}
-        <div className="flex justify-center mb-6 touch-none">
+        <div className="flex justify-center mb-8 touch-none">
           <div className="relative">
             <ActivityCard
               activity={currentActivity}
@@ -738,32 +730,32 @@ const ActivitiesPage: React.FC = () => {
             />
             
             {/* Swipe Instructions */}
-            <div className="absolute -bottom-16 left-1/2 transform -translate-x-1/2 text-center">
-              <div className="bg-white/20 backdrop-blur-sm rounded-full px-3 py-1.5 border border-white/30">
-                <p className="text-white font-medium text-xs">Swipe left to pass • Swipe right to join</p>
+            <div className="absolute -bottom-20 left-1/2 transform -translate-x-1/2 text-center">
+              <div className="bg-white/20 backdrop-blur-sm rounded-full px-4 py-2 border border-white/30">
+                <p className="text-white font-medium text-sm">Swipe left to pass • Swipe right to join</p>
               </div>
             </div>
           </div>
         </div>
 
         {/* Quick Actions */}
-        <div className="flex justify-center gap-6 mb-6 touch-none">
+        <div className="flex justify-center gap-6 mb-8 touch-none">
           <Button
             variant="outline"
             size="lg"
-            className="rounded-full w-16 h-16 p-0 border-2 border-red-400 hover:border-red-500 hover:bg-red-500/20 text-red-400 backdrop-blur-sm shadow-lg transition-all duration-200 hover:scale-105"
+            className="rounded-full w-20 h-20 p-0 border-2 border-red-400 hover:border-red-500 hover:bg-red-500/20 text-red-400 backdrop-blur-sm shadow-lg transition-all duration-200 hover:scale-105"
             onClick={handleSwipeLeft}
           >
-            <X size={24} />
+            <X size={28} />
           </Button>
           
           <Button
             variant="outline"
             size="lg"
-            className="rounded-full w-16 h-16 p-0 border-2 border-green-400 hover:border-green-500 hover:bg-green-500/20 text-green-400 backdrop-blur-sm shadow-lg transition-all duration-200 hover:scale-105"
+            className="rounded-full w-20 h-20 p-0 border-2 border-green-400 hover:border-green-500 hover:bg-green-500/20 text-green-400 backdrop-blur-sm shadow-lg transition-all duration-200 hover:scale-105"
             onClick={handleSwipeRight}
           >
-            <Heart size={24} />
+            <Heart size={28} />
           </Button>
         </div>
       </div>

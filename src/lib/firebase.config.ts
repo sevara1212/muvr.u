@@ -1,11 +1,12 @@
 // Firebase configuration
 export const firebaseConfig = {
-  apiKey: "AIzaSyBQ2QGDCAO_QU-J1bC41KoSrHkro4iigVQ",
-  authDomain: "fit-tribe-mobile-hub.firebaseapp.com",
-  projectId: "fit-tribe-mobile-hub",
-  storageBucket: "fit-tribe-mobile-hub.firebasestorage.app",
-  messagingSenderId: "784141035396",
-  appId: "1:784141035396:web:8b0b5c01cdbc67d8721fd1"
+  apiKey: "AIzaSyBxg0WUelyJFWGW6xIhBKG-Pgr40GDTfWY",
+  authDomain: "fitness-4fc9f.firebaseapp.com",
+  projectId: "fitness-4fc9f",
+  storageBucket: "fitness-4fc9f.firebasestorage.app",
+  messagingSenderId: "561160631634",
+  appId: "1:561160631634:web:1501cd56f2507c57f3f68b",
+  measurementId: "G-DQY23JVM5M"
 };
 
 // You can find the complete list of regions by running 'firebase firestore:locations' in your terminal
