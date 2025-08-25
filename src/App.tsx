@@ -8,6 +8,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { telegramApp } from "@/utils/telegramApp";
 import TelegramLogin from "./components/TelegramLogin";
+import { emailService } from "@/services/emailService";
 import Index from "./pages/Index";
 import CreateRoomPage from "./pages/CreateRoomPage";
 import RoomDetailPage from "./pages/RoomDetailPage";
@@ -24,12 +25,27 @@ import ChatsPage from "./pages/ChatsPage";
 import RequestsPage from "./pages/RequestsPage";
 import SentRequestsPage from "./pages/SentRequestsPage";
 import UpcomingPage from "./pages/UpcomingPage";
+import VerifyEmailPage from "./pages/VerifyEmailPage";
 
 const queryClient = new QueryClient();
 
 const App = () => {
   // Initialize Telegram Mini App
   React.useEffect(() => {
+    // Initialize EmailJS for OTP emails
+    try {
+      emailService.init();
+      console.log('📧 Email service initialized successfully');
+      
+      // Test EmailJS connection (optional - remove in production)
+      setTimeout(async () => {
+        const isWorking = await emailService.testConnection();
+        console.log('🧪 EmailJS connection test result:', isWorking);
+      }, 2000);
+    } catch (e) {
+      console.error('❌ Email service initialization failed:', e);
+    }
+
     if (telegramApp.isTelegramApp()) {
       console.log('🚀 Muvr Mini App launched in Telegram');
       
@@ -82,6 +98,7 @@ const App = () => {
               <Route path="/category/:sport" element={<ActivitiesPage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/signup" element={<SignupPage />} />
+              <Route path="/verify-email" element={<VerifyEmailPage />} />
               <Route path="/chat/:roomId" element={<ChatPage />} />
               <Route path="/chats" element={<ChatsPage />} />
               <Route path="/requests" element={<RequestsPage />} />

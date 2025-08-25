@@ -90,7 +90,7 @@ const RoomCard = ({ room, onActionComplete }: RoomCardProps) => {
                 className="h-6 w-6 object-contain" 
               />
             </span>
-            <span className="font-bold text-[#1A1A72] text-base">{room.sportType}</span>
+            <span className="font-bold text-[#1A1A72] text-base">{String(room.sportType).replace(/^SportType\./, '')}</span>
           </div>
           <div className="text-right">
             <span className="text-xs text-[#887DC0] font-medium mt-1 block">
@@ -121,7 +121,7 @@ const RoomCard = ({ room, onActionComplete }: RoomCardProps) => {
           </div>
           <div className="flex items-center gap-2">
             <Users size={16} className="text-[#887DC0]" />
-            Hosted by {room.hostName || room.host?.name || "Unknown"}
+            Hosted by {room.host?.name || room.hostName || "Unknown"}
           </div>
         </div>
         

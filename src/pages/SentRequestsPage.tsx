@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+import { getSentRequests, cancelRequestById } from '@/services/roomService';
 
 const SentRequestsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -20,39 +21,15 @@ const SentRequestsPage: React.FC = () => {
       navigate('/login');
       return;
     }
-
     loadSentRequests();
   }, [currentUser, navigate]);
 
   const loadSentRequests = async () => {
     try {
       setLoading(true);
-      // This would need to be implemented in roomService
-      // For now, we'll show a mock implementation
-      const mockRequests: JoinRequest[] = [
-        {
-          id: '1',
-          roomId: 'room1',
-          userId: currentUser!.id,
-          hostId: 'host1',
-          status: 'pending',
-          requestedAt: new Date(),
-          message: 'I would love to join this activity!',
-          room: {
-            id: 'room1',
-            title: 'Morning Running Group',
-            sportType: 'Running',
-            dateTime: new Date(Date.now() + 86400000).toISOString(),
-            location: { address: 'Central Park', city: 'Tashkent' },
-            maxParticipants: 10,
-            participants: [],
-            hostName: 'John Doe'
-          } as Room,
-          user: currentUser!
-        }
-      ];
-      
-      setSentRequests(mockRequests);
+      if (!currentUser) return;
+      const requests = await getSentRequests(currentUser.id);
+      setSentRequests(requests);
     } catch (error) {
       console.error('Error loading sent requests:', error);
       toast.error('Failed to load sent requests');
@@ -63,7 +40,7 @@ const SentRequestsPage: React.FC = () => {
 
   const cancelRequest = async (requestId: string) => {
     try {
-      // This would need to be implemented in roomService
+      await cancelRequestById(requestId);
       setSentRequests(prev => prev.filter(req => req.id !== requestId));
       toast.success('Request cancelled successfully');
     } catch (error) {
@@ -94,132 +71,54 @@ const SentRequestsPage: React.FC = () => {
       case 'rejected':
         return 'Rejected';
       default:
-        return 'Unknown';
+        return status;
     }
   };
 
-  if (loading) {
-    return (
-      <Layout>
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#35179d] mx-auto mb-4" />
-            <p className="text-gray-600">Loading sent requests...</p>
-          </div>
-        </div>
-      </Layout>
-    );
-  }
+  const formatDate = (date: any) => {
+    const d = date?.toDate ? date.toDate() : new Date(date);
+    return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
 
   return (
     <Layout>
-      <div className="min-h-screen bg-[#35179d] py-6">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center">
-            <ArrowLeft 
-              size={20} 
-              className="mr-3 cursor-pointer text-white hover:text-white/80 transition-colors" 
-              onClick={() => navigate(-1)}
-            />
-            <div>
-              <h1 className="text-2xl font-bold text-white mb-1">Sent Requests</h1>
-              <p className="text-white/70 text-sm">Requests you've sent to join activities</p>
-            </div>
-          </div>
+      <div className="max-w-3xl mx-auto p-4">
+        <div className="flex items-center gap-3 mb-4">
+          <Button variant="ghost" onClick={() => navigate(-1)}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <h1 className="text-xl font-semibold">Sent Requests</h1>
         </div>
 
-        {sentRequests.length === 0 ? (
-          <div className="text-center py-12">
-            <Bell size={48} className="text-white/50 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-white mb-2">No sent requests</h3>
-            <p className="text-white/70 mb-4">You haven't sent any join requests yet</p>
-            <Button 
-              onClick={() => navigate('/activities')}
-              className="bg-white text-[#35179d] hover:bg-white/90"
-            >
-              Discover Activities
-            </Button>
-          </div>
+        {loading ? (
+          <p className="text-sm text-white/70">Loading...</p>
+        ) : sentRequests.length === 0 ? (
+          <p className="text-sm text-white/70">You haven't sent any requests yet.</p>
         ) : (
-          <div className="space-y-4">
-            {sentRequests.map((request) => (
-              <Card 
-                key={request.id}
-                className="bg-white/10 backdrop-blur-sm border-white/20"
-              >
+          <div className="space-y-3">
+            {sentRequests.map((req) => (
+              <Card key={req.id} className="border-white/10 bg-white/5">
                 <CardContent className="p-4">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-white mb-1">{request.room?.title}</h3>
-                      <Badge variant="outline" className={`text-xs ${getStatusColor(request.status)}`}>
-                        {getStatusText(request.status)}
-                      </Badge>
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h3 className="font-medium">{req.room?.title || 'Activity'}</h3>
+                      <div className="text-sm text-white/70 flex items-center gap-2 mt-1">
+                        <Clock className="h-4 w-4" /> {req.room?.dateTime ? formatDate(req.room?.dateTime) : '—'}
+                      </div>
+                      {req.room?.location?.address && (
+                        <div className="text-sm text-white/70 flex items-center gap-2 mt-1">
+                          <MapPin className="h-4 w-4" /> {req.room.location.address}
+                        </div>
+                      )}
+                      <div className="text-xs mt-2 inline-flex items-center gap-2 border px-2 py-0.5 rounded-full {getStatusColor(String(req.status))}">
+                        <span>{getStatusText(String(req.status))}</span>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-white/60 text-xs">
-                        {new Date(request.requestedAt).toLocaleDateString()}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2 text-sm text-white/80 mb-3">
-                    <div className="flex items-center gap-2">
-                      <Clock size={14} />
-                      <span>
-                        {request.room?.dateTime && new Date(request.room.dateTime).toLocaleDateString()} at{' '}
-                        {request.room?.dateTime && new Date(request.room.dateTime).toLocaleTimeString([], { 
-                          hour: '2-digit', 
-                          minute: '2-digit' 
-                        })}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <MapPin size={14} />
-                      <span>{request.room?.location?.address}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Users size={14} />
-                      <span>
-                        {request.room?.participants?.length || 0}/{request.room?.maxParticipants} participants
-                      </span>
-                    </div>
-                  </div>
-
-                  {request.message && (
-                    <div className="bg-white/5 rounded-lg p-3 mb-3">
-                      <p className="text-white/80 text-sm">{request.message}</p>
-                    </div>
-                  )}
-
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-white/60">
-                      Host: {request.room?.hostName || 'Anonymous'}
-                    </span>
-                    
-                    {request.status === 'pending' && (
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        className="text-red-400 border-red-400/30 hover:bg-red-400/20"
-                        onClick={() => cancelRequest(request.id)}
-                      >
-                        <X className="h-3 w-3 mr-1" />
-                        Cancel
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" onClick={() => cancelRequest(req.id)}>
+                        <X className="h-4 w-4 mr-1" /> Cancel
                       </Button>
-                    )}
-                    
-                    {request.status === 'approved' && (
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        className="text-green-400 border-green-400/30 hover:bg-green-400/20"
-                        onClick={() => navigate(`/room/${request.roomId}`)}
-                      >
-                        <Check className="h-3 w-3 mr-1" />
-                        View Activity
-                      </Button>
-                    )}
+                    </div>
                   </div>
                 </CardContent>
               </Card>

@@ -12,6 +12,7 @@ import { doc, setDoc, usersCollection } from "@/lib/firebase";
 import { ActivityLevel, Gender } from "@/types";
 import { ArrowLeft } from 'lucide-react';
 import muvrLogo from '/public/images/muvr_logo.png';
+import { emailService } from "@/services/emailService";
 
 const strongPasswordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
 
@@ -72,6 +73,23 @@ const SignupPage = () => {
     setPasswordError(checkPasswordStrength(e.target.value));
   };
 
+  // Test EmailJS function
+  const testEmailJS = async () => {
+    try {
+      console.log('🧪 Testing EmailJS...');
+      const result = await emailService.sendOTP('test@example.com', 'Test User');
+      console.log('🧪 EmailJS test result:', result);
+      if (result.success) {
+        toast.success('EmailJS test successful! Check console for details.');
+      } else {
+        toast.error(`EmailJS test failed: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('🧪 EmailJS test error:', error);
+      toast.error('EmailJS test failed');
+    }
+  };
+
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -118,13 +136,19 @@ const SignupPage = () => {
       );
       
       if (result.success) {
-        toast.success("Account created successfully!");
-        console.log('✅ Signup successful, navigating to home...');
-        
-        // Force navigation to home page
-        setTimeout(() => {
-          navigate("/", { replace: true });
-        }, 100);
+        if (result.requiresVerification) {
+          // User will be redirected to verification page by the auth hook
+          console.log('✅ Signup successful, redirecting to verification...');
+          return;
+        } else {
+          toast.success("Account created successfully!");
+          console.log('✅ Signup successful, navigating to home...');
+          
+          // Force navigation to home page
+          setTimeout(() => {
+            navigate("/", { replace: true });
+          }, 100);
+        }
       } else {
         console.error('❌ Signup failed:', result.error);
         setFormError(result.error || "Failed to create account");
@@ -255,6 +279,16 @@ const SignupPage = () => {
           <Button type="submit" className="w-full py-2 rounded bg-[#35179d] text-white font-bold text-base mt-2 hover:bg-[#2a146a] transition" disabled={loading}>
             {loading ? "Creating account..." : "Sign up"}
           </Button>
+          
+          {/* Test EmailJS button - remove in production */}
+          <Button 
+            type="button" 
+            onClick={testEmailJS}
+            className="w-full py-2 rounded bg-gray-500 text-white font-bold text-base mt-2 hover:bg-gray-600 transition"
+          >
+            Test EmailJS
+          </Button>
+          
           <div className="text-center text-xs mt-3 text-gray-500">
             Already have an account?{' '}
             <Link to="/login" className="text-[#35179d] font-semibold hover:underline">Login</Link>

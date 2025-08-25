@@ -16,11 +16,12 @@ interface AuthContextType {
     name: string,
     gender?: string,
     age?: number
-  ) => Promise<{ success: boolean; error?: string }>;
+  ) => Promise<{ success: boolean; error?: string; requiresVerification?: boolean }>;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   loginWithTelegram: () => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<{ success: boolean; error?: string }>;
   resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
+  resendEmailVerification: () => Promise<{ success: boolean; error?: string }>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -29,11 +30,12 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   error: null,
   setCurrentUser: () => {},
-  signup: async () => ({ success: false }),
+      signup: async () => ({ success: false, requiresVerification: false }),
   login: async () => ({ success: false }),
   loginWithTelegram: async () => ({ success: false }),
   logout: async () => ({ success: false }),
-  resetPassword: async () => ({ success: false })
+  resetPassword: async () => ({ success: false }),
+  resendEmailVerification: async () => ({ success: false })
 });
 
 export const useAuth = () => useContext(AuthContext);

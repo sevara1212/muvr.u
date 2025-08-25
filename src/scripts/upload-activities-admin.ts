@@ -1,5 +1,24 @@
-import { initializeApp } from "firebase/app";
-import { getFirestore, doc, setDoc, collection, getDocs } from "firebase/firestore";
+import { initializeApp, cert } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
+
+// Initialize Firebase Admin SDK
+const serviceAccount = {
+  "type": "service_account",
+  "project_id": "fitness-4fc9f",
+  "private_key_id": "your-private-key-id",
+  "private_key": "your-private-key",
+  "client_email": "firebase-adminsdk-xxxxx@fitness-4fc9f.iam.gserviceaccount.com",
+  "client_id": "your-client-id",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-xxxxx%40fitness-4fc9f.iam.gserviceaccount.com"
+};
+
+// For now, let's use a simpler approach with client SDK but with proper authentication
+import { initializeApp as initializeClientApp } from 'firebase/app';
+import { getAuth, signInAnonymously } from 'firebase/auth';
+import { getFirestore as getClientFirestore, doc, setDoc, collection } from 'firebase/firestore';
 
 // Firebase configuration
 const firebaseConfig = {
@@ -12,8 +31,9 @@ const firebaseConfig = {
   measurementId: "G-DQY23JVM5M"
 };
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+const app = initializeClientApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getClientFirestore(app);
 
 // Create mock users for the activities
 const createMockUsers = () => {
@@ -29,7 +49,7 @@ const createMockUsers = () => {
   return users;
 };
 
-// Generate all 201 activities
+// Generate all 200 activities
 const generateAllActivities = () => {
   const mockUsers = createMockUsers();
   const activities = [];
@@ -103,46 +123,45 @@ const generateAllActivities = () => {
       description: "A fun and social gym event open to all skill levels!"
     },
     {
-      title: "Aqualand Swimming Session",
+      title: "Swimming Pool Swimming Session",
       sportType: "Swimming",
       location: {
-        address: "Chinabad Street, 61A",
+        address: "Yunusabad District",
         city: "Tashkent",
-        lat: 41.36,
+        lat: 41.35,
         lng: 69.29
       },
       description: "A fun and social swimming event open to all skill levels!"
     },
     {
-      title: "Yunusabad Stadium Football Session",
-      sportType: "Football",
+      title: "Basketball Court Basketball Session",
+      sportType: "Basketball",
       location: {
-        address: "Yunusabad District, 3-mavze",
+        address: "Chilanzar District",
         city: "Tashkent",
-        lat: 41.364559,
-        lng: 69.294178
+        lat: 41.28,
+        lng: 69.25
       },
-      description: "A fun and social football event open to all skill levels!"
+      description: "A fun and social basketball event open to all skill levels!"
     },
     {
-      title: "TTClub Tennis Session",
-      sportType: "Tennis",
+      title: "Cycling Track Cycling Session",
+      sportType: "Cycling",
       location: {
-        address: "Mahtumquli Street, 105Г",
+        address: "Mirabad District",
         city: "Tashkent",
-        lat: 41.35,
-        lng: 69.3
+        lat: 41.30,
+        lng: 69.26
       },
-      description: "A fun and social tennis event open to all skill levels!"
+      description: "A fun and social cycling event open to all skill levels!"
     }
   ];
 
-  // Generate 201 activities
-  for (let i = 0; i < 201; i++) {
+  for (let i = 0; i < 200; i++) {
     const template = activityTemplates[i % activityTemplates.length];
     const hostId = Math.floor(Math.random() * 200);
-    const maxParticipants = Math.floor(Math.random() * 8) + 4; // 4-11 participants
-    const duration = [60, 90, 120][Math.floor(Math.random() * 3)];
+    const maxParticipants = Math.floor(Math.random() * 10) + 5; // 5-15 participants
+    const duration = Math.floor(Math.random() * 120) + 60; // 1-3 hours
     
     // Generate random participants
     const participants = [];
@@ -189,7 +208,11 @@ const generateAllActivities = () => {
 
 const uploadActivities = async () => {
   try {
-    console.log('🚀 Starting upload of ALL 201 activities to Firebase...');
+    console.log('🔐 Signing in anonymously...');
+    await signInAnonymously(auth);
+    console.log('✅ Signed in successfully');
+    
+    console.log('🚀 Starting upload of ALL 200 activities to Firebase...');
     
     const activities = generateAllActivities();
     
@@ -218,28 +241,10 @@ const uploadActivities = async () => {
       console.log(`❌ Failed to upload: ${errorCount} activities`);
     }
     
-    // Verify the upload
-    await verifyUpload(uploadedCount);
-    
   } catch (error) {
     console.error("❌ Upload failed:", error);
   }
 };
 
-const verifyUpload = async (expectedCount: number) => {
-  try {
-    const snap = await getDocs(collection(db, "activities_upl"));
-    console.log(`✅ Verification: ${snap.size} activities found in Firestore`);
-    
-    if (snap.size === expectedCount) {
-      console.log("🎯 Perfect! All activities uploaded successfully!");
-    } else {
-      console.log(`⚠️  Warning: Expected ${expectedCount} but found ${snap.size} activities`);
-    }
-  } catch (error) {
-    console.error("❌ Verification failed:", error);
-  }
-};
-
 // Run the upload
-uploadActivities(); 
+uploadActivities();

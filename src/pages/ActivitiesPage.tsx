@@ -345,7 +345,7 @@ const ActivitiesPage: React.FC = () => {
     priceRange: [0, 100],
     useLocation: false
   });
-
+  
   useEffect(() => {
     loadActivities();
     getCurrentLocation();
@@ -390,19 +390,32 @@ const ActivitiesPage: React.FC = () => {
   const applyFilters = () => {
     if (activities.length === 0) return;
 
+    const now = new Date();
+
     let filtered = activities.filter(activity => {
-      // Filter by sport type
-      if (filters.selectedSports.length > 0 && !filters.selectedSports.includes(activity.sportType)) {
+      // Exclude past activities
+      try {
+        if (!activity.dateTime) return false;
+        if (new Date(activity.dateTime) <= now) return false;
+      } catch {
         return false;
+      }
+
+      // Filter by sport type, or use user interests when none selected
+      if (filters.selectedSports.length > 0) {
+        if (!filters.selectedSports.includes(activity.sportType)) {
+          return false;
+        }
+      } else if (currentUser?.interests && currentUser.interests.length > 0) {
+        if (!currentUser.interests.includes(activity.sportType)) {
+          return false;
+        }
       }
 
       // Filter by gender preference
       if (filters.gender !== 'All' && activity.genderPreference && activity.genderPreference !== filters.gender) {
         return false;
       }
-
-      // Filter by activity level (if available)
-      // Note: activityLevel not currently available in Room type
 
       // Filter by age range
       if (activity.ageRange) {
@@ -417,12 +430,13 @@ const ActivitiesPage: React.FC = () => {
         return false;
       }
 
-      // Filter by distance (if location is enabled)
-      // Note: coordinates not currently available in Location type
-      // This would be implemented when location data is available
-
       return true;
     });
+
+    // If user has no interests and no explicit sport filter, provide a randomized mix
+    if (filters.selectedSports.length === 0 && (!currentUser?.interests || currentUser.interests.length === 0)) {
+      filtered = [...filtered].sort(() => Math.random() - 0.5);
+    }
 
     setFilteredActivities(filtered);
     setCurrentIndex(0);
@@ -433,16 +447,8 @@ const ActivitiesPage: React.FC = () => {
     try {
       setLoading(true);
       const allActivities = await getAllActivities();
-      
-      // Filter out activities that are full or past date
-      const now = new Date();
-      const availableActivities = allActivities.filter(activity => {
-        const activityDate = new Date(activity.dateTime);
-        const spotsLeft = activity.maxParticipants - (activity.participants?.length || 0);
-        return activityDate > now && spotsLeft > 0;
-      });
-
-      setActivities(availableActivities);
+      // Show everything by default (user can filter afterward)
+      setActivities(allActivities);
     } catch (error) {
       console.error('Error loading activities:', error);
       toast.error('Failed to load activities');
@@ -450,7 +456,7 @@ const ActivitiesPage: React.FC = () => {
       setLoading(false);
     }
   };
-
+  
   const handleSwipeRight = async () => {
     if (currentIndex >= filteredActivities.length) return;
     
@@ -496,6 +502,7 @@ const ActivitiesPage: React.FC = () => {
       priceRange: [0, 100],
       useLocation: false
     });
+    setShowFilters(true);
   };
 
   const resetCards = () => {
@@ -555,7 +562,7 @@ const ActivitiesPage: React.FC = () => {
   }
 
   const currentActivity = filteredActivities[currentIndex];
-
+  
   return (
     <Layout>
       <style jsx>{`
@@ -568,7 +575,7 @@ const ActivitiesPage: React.FC = () => {
         }
       `}</style>
       <div className="min-h-screen bg-[#35179d] py-6 overflow-hidden swipe-container">
-        {/* Header */}
+      {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-2xl font-bold text-white mb-1">Discover Activities</h1>
@@ -623,7 +630,7 @@ const ActivitiesPage: React.FC = () => {
                       {filters.ageRange[0]}-{filters.ageRange[1]}
                     </span>
                   </div>
-                </div>
+      </div>
 
                 {/* Gender Filter */}
                 <div>
@@ -647,7 +654,7 @@ const ActivitiesPage: React.FC = () => {
                 <div>
                   <Label className="text-sm font-medium">Sport Types</Label>
                   <div className="grid grid-cols-2 gap-2 mt-2">
-                    {Object.values(SportType).map((sport) => (
+          {Object.values(SportType).map((sport) => (
                       <div key={sport} className="flex items-center space-x-2">
                         <Checkbox
                           id={sport}
@@ -666,10 +673,10 @@ const ActivitiesPage: React.FC = () => {
                         />
                         <Label htmlFor={sport} className="text-sm">{sport}</Label>
                       </div>
-                    ))}
-                  </div>
-                </div>
-
+          ))}
+        </div>
+      </div>
+      
                 {/* Price Range */}
                 <div>
                   <Label className="text-sm font-medium">Price Range ($)</Label>
@@ -729,14 +736,9 @@ const ActivitiesPage: React.FC = () => {
               showDetails={showDetails}
             />
             
-            {/* Swipe Instructions */}
-            <div className="absolute -bottom-20 left-1/2 transform -translate-x-1/2 text-center">
-              <div className="bg-white/20 backdrop-blur-sm rounded-full px-4 py-2 border border-white/30">
-                <p className="text-white font-medium text-sm">Swipe left to pass • Swipe right to join</p>
-              </div>
-            </div>
+            {/* Swipe Instructions removed per request */}
           </div>
-        </div>
+            </div>
 
         {/* Quick Actions */}
         <div className="flex justify-center gap-6 mb-8 touch-none">
@@ -757,8 +759,8 @@ const ActivitiesPage: React.FC = () => {
           >
             <Heart size={28} />
           </Button>
-        </div>
-      </div>
+            </div>
+            </div>
     </Layout>
   );
 };

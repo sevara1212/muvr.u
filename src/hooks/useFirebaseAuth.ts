@@ -13,6 +13,7 @@ import { User, ActivityLevel, RequestStatus } from '@/types';
 import { clearUserCache } from '@/services/chatService';
 import { toast } from 'sonner';
 import { telegramAuthService } from "@/services/telegramAuthService";
+import { emailService } from "@/services/emailService";
 
 interface AuthState {
   currentUser: User | null;
@@ -206,7 +207,7 @@ export function useFirebaseAuth() {
     name: string,
     gender?: string,
     age?: number
-  ) => {
+  ): Promise<{ success: boolean; error?: string; requiresVerification?: boolean }> => {
     setAuthState(prev => ({ ...prev, loading: true, error: null }));
     
     try {
@@ -221,57 +222,34 @@ export function useFirebaseAuth() {
         throw new Error('Password must be at least 8 characters long.');
       }
       
-      // Create user in Firebase Auth
-      console.log('🔐 Creating Firebase Auth user...');
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const firebaseUser = userCredential.user;
+      // Send OTP email verification (do NOT create account yet)
+      console.log('📧 Sending OTP email verification...');
+      const otpResult = await emailService.sendOTP(email, name);
       
-      console.log('✅ Firebase Auth user created:', firebaseUser.uid);
-      
-      // Update profile with display name
-      console.log('👤 Updating user profile...');
-      await updateProfile(firebaseUser, { displayName: name });
-      
-      // Create user document in Firestore
-      console.log('📄 Creating Firestore user document...');
-      const userData = {
-        name,
-        email,
-        avatar: "",
-        interests: [],
-        activityLevel: ActivityLevel.Beginner,
-        joinedDate: new Date().toISOString(),
-        joinedRooms: [],
-        gender: gender || 'Other',
-        age: typeof age === 'number' && !isNaN(age) ? age : 14,
-        preferredGender: 'Both',
-        preferredAgeRange: { min: 14, max: 60 }
-      };
-      
-      // Use setDoc with merge option to handle offline scenarios better
-      await setDoc(doc(usersCollection, firebaseUser.uid), userData, { merge: true });
-      
-      console.log('✅ Firestore user document created successfully');
-      
-      // Update auth state immediately
-      const currentUser = { id: firebaseUser.uid, ...userData } as User;
-      setAuthState({
-        currentUser,
-        firebaseUser,
-        loading: false,
-        error: null
-      });
-      
-      console.log('🎉 Professional signup completed successfully!');
-      console.log('👤 Current user set:', currentUser.name);
-      
-      // Show success toast
-      toast.success(`Welcome to Muvr, ${name}! 🎉`);
-      
-      // Check for approved requests after user is loaded
-      checkApprovedRequests(firebaseUser.uid);
-      
-      return { success: true };
+      if (otpResult.success) {
+        console.log('✅ OTP email sent successfully');
+        
+        // Store pending signup data for finalization after OTP
+        const pending = {
+          email,
+          password,
+          name,
+          gender: gender || 'Other',
+          age: typeof age === 'number' && !isNaN(age) ? age : 14
+        };
+        localStorage.setItem('pending_signup', JSON.stringify(pending));
+        
+        // Store email and name for verification page (legacy keys)
+        localStorage.setItem('signup_email', email);
+        localStorage.setItem('signup_name', name);
+        
+        // Navigate to verification page
+        window.location.href = `/verify-email?email=${encodeURIComponent(email)}&name=${encodeURIComponent(name)}`;
+        setAuthState(prev => ({ ...prev, loading: false }));
+        return { success: true, requiresVerification: true };
+      } else {
+        throw new Error(otpResult.error || 'Failed to send verification email');
+      }
     } catch (error: any) {
       console.error('❌ Professional signup failed:', error);
       
@@ -304,6 +282,67 @@ export function useFirebaseAuth() {
       toast.error(errorMessage);
       
       return { success: false, error: errorMessage };
+    }
+  };
+
+  // Finalize signup after OTP confirmation
+  const finalizeSignupAfterOTP = async (): Promise<{ success: boolean; error?: string }> => {
+    setAuthState(prev => ({ ...prev, loading: true, error: null }));
+    
+    try {
+      console.log('🔐 Starting account creation after OTP verification...');
+      
+      const raw = localStorage.getItem('pending_signup');
+      if (!raw) {
+        console.error('❌ No pending signup data found in localStorage');
+        return { success: false, error: 'No pending signup found. Please try signing up again.' };
+      }
+      
+      const pending = JSON.parse(raw) as { email: string; password: string; name: string; gender: string; age: number };
+      const { email, password, name, gender, age } = pending;
+      
+      console.log('📋 Retrieved pending signup data for:', email);
+
+      // Create Firebase Auth user now
+      console.log('🔐 Creating Firebase Auth user after OTP...');
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const firebaseUser = userCredential.user;
+
+      await updateProfile(firebaseUser, { displayName: name });
+
+      // Create Firestore user document
+      console.log('📄 Creating Firestore user document...');
+      const userData = {
+        name,
+        email,
+        avatar: "",
+        interests: [],
+        activityLevel: ActivityLevel.Beginner,
+        joinedDate: new Date().toISOString(),
+        joinedRooms: [],
+        gender,
+        age,
+        preferredGender: 'Both',
+        preferredAgeRange: { min: 14, max: 60 }
+      };
+      await setDoc(doc(usersCollection, firebaseUser.uid), userData, { merge: true });
+
+      const currentUser = { id: firebaseUser.uid, ...userData } as User;
+      setAuthState({ currentUser, firebaseUser, loading: false, error: null });
+
+      // Clear pending data
+      localStorage.removeItem('pending_signup');
+      localStorage.removeItem('signup_email');
+      localStorage.removeItem('signup_name');
+
+      checkApprovedRequests(firebaseUser.uid);
+      return { success: true };
+    } catch (error: any) {
+      console.error('❌ Finalize signup failed:', error);
+      const msg = error.message || 'Failed to finalize signup';
+      toast.error(msg);
+      setAuthState(prev => ({ ...prev, loading: false, error: msg }));
+      return { success: false, error: msg };
     }
   };
 
@@ -395,6 +434,41 @@ export function useFirebaseAuth() {
     }
   };
 
+  // Resend email verification
+  const resendEmailVerification = async () => {
+    if (!authState.firebaseUser) {
+      return { success: false, error: 'No user logged in' };
+    }
+
+    try {
+      const email = authState.firebaseUser.email;
+      const name = authState.firebaseUser.displayName || 'User';
+      
+      if (!email) {
+        return { success: false, error: 'No email found' };
+      }
+      
+      const result = await emailService.resendOTP(email, name);
+      
+      if (result.success) {
+        toast.success('Verification email sent! Please check your inbox.');
+        return { success: true };
+      } else {
+        toast.error(result.error || 'Failed to send verification email');
+        return { success: false, error: result.error };
+      }
+    } catch (error: any) {
+      let errorMessage = 'Failed to send verification email';
+      
+      if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      toast.error(errorMessage);
+      return { success: false, error: errorMessage };
+    }
+  };
+
   // Telegram authentication
   const loginWithTelegram = async () => {
     setAuthState(prev => ({ ...prev, loading: true, error: null }));
@@ -443,9 +517,11 @@ export function useFirebaseAuth() {
     ...authState,
     setCurrentUser,
     signup,
+    finalizeSignupAfterOTP,
     login,
     logout,
     resetPassword,
+    resendEmailVerification,
     loginWithTelegram,
   };
 } 

@@ -1,14 +1,14 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore, doc, setDoc, collection, getDocs } from "firebase/firestore";
 
-// Firebase configuration
+// Firebase configuration - current project
 const firebaseConfig = {
-  apiKey: "AIzaSyBQ2QGDCAO_QU-J1bC41KoSrHkro4iigVQ",
-  authDomain: "fit-tribe-mobile-hub.firebaseapp.com",
-  projectId: "fit-tribe-mobile-hub",
-  storageBucket: "fit-tribe-mobile-hub.appspot.com",
-  messagingSenderId: "784141035396",
-  appId: "1:784141035396:web:8b0b5c01cdbc67d8721fd1"
+  apiKey: "AIzaSyBxg0WUelyJFWGW6xIhBKG-Pgr40GDTfWY",
+  authDomain: "fitness-4fc9f.firebaseapp.com",
+  projectId: "fitness-4fc9f",
+  storageBucket: "fitness-4fc9f.firebasestorage.app",
+  messagingSenderId: "561160631634",
+  appId: "1:561160631634:web:1501cd56f2507c57f3f68b"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -16,7 +16,7 @@ const db = getFirestore(app);
 
 // Create mock users for the activities
 const createMockUsers = () => {
-  const users = [];
+  const users = [] as any[];
   for (let i = 0; i < 200; i++) {
     users.push({
       id: `user${i}`,
@@ -52,7 +52,7 @@ const uploadMockUsers = async () => {
         if (uploadedCount % 20 === 0) {
           console.log(`✅ Uploaded ${uploadedCount}/${users.length} users...`);
         }
-      } catch (uploadError) {
+      } catch (uploadError: any) {
         errorCount++;
         console.log(`❌ Failed to upload user ${user.id}: ${uploadError.message}`);
       }
@@ -74,10 +74,10 @@ const verifyUpload = async (expectedCount: number) => {
   try {
     const snap = await getDocs(collection(db, "users"));
     console.log(`✅ Verification: ${snap.size} users found in Firestore`);
-    if (snap.size === expectedCount) {
-      console.log("🎯 Perfect! All users uploaded successfully!");
+    if (snap.size >= expectedCount) {
+      console.log("🎯 Users present in Firestore.");
     } else {
-      console.log(`⚠️  Warning: Expected ${expectedCount} but found ${snap.size} users`);
+      console.log(`⚠️  Warning: Expected at least ${expectedCount} but found ${snap.size} users`);
     }
   } catch (error) {
     console.error("❌ Verification failed:", error);

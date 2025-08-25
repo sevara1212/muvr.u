@@ -74,7 +74,8 @@ if (isLocalhost && USE_FIREBASE_EMULATOR) {
 // Collections references
 const roomsCollection = collection(db, "rooms");
 const usersCollection = collection(db, "users");
-const activitiesCollection = collection(db, "activities_upl");
+const activitiesCollection = collection(db, "activities_upl"); // curated activities
+const userActivitiesCollection = collection(db, "activities"); // user-created activities
 
 export {
   app,
@@ -84,6 +85,7 @@ export {
   roomsCollection,
   usersCollection,
   activitiesCollection,
+  userActivitiesCollection,
   onAuthStateChanged,
   doc,
   setDoc,

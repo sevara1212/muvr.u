@@ -2,6 +2,7 @@ import {
   roomsCollection, 
   usersCollection,
   activitiesCollection,
+  userActivitiesCollection,
   doc, 
   setDoc, 
   getDoc, 
@@ -23,6 +24,7 @@ import {
 } from "@/lib/firebase";
 import { FirebaseRoom, Room, User, JoinRequest, RequestStatus, ChatMessage } from "@/types";
 import { DocumentData } from "firebase/firestore";
+import { mockUsers } from "@/data/Data";
 
 // Cache for activities and hosts data
 const activitiesCache = new Map<string, Room[]>();
@@ -42,8 +44,11 @@ const setCache = (key: string, data: any) => {
   cacheExpiry.set(key, Date.now() + CACHE_DURATION);
 };
 
+
+
 // Helper function to batch fetch host data with caching
 const fetchHostsData = async (hostIds: string[]): Promise<Record<string, User>> => {
+  console.log('🔍 Fetching host data for IDs:', hostIds);
   // Remove duplicates
   const uniqueHostIds = [...new Set(hostIds)];
   const hostsMap: Record<string, User> = {};
@@ -65,13 +70,38 @@ const fetchHostsData = async (hostIds: string[]): Promise<Record<string, User>> 
       const q = query(usersCollection, where('__name__', 'in', batch));
       const hostSnaps = await getDocs(q);
       
+      // Track which IDs we resolved from Firestore
+      const resolvedIds = new Set<string>();
+
       hostSnaps.forEach(doc => {
         const hostData = { id: doc.id, ...doc.data() } as User;
         hostsMap[doc.id] = hostData;
+        resolvedIds.add(doc.id);
+        console.log(`✅ Found host data for ${doc.id}: ${hostData.name}`);
         // Cache the host data
         hostsCache.set(doc.id, hostData);
         cacheExpiry.set(`host_${doc.id}`, Date.now() + CACHE_DURATION);
       });
+
+      // Fallback: derive names from mockUsers for any unresolved IDs
+      const unresolved = batch.filter(id => !resolvedIds.has(id));
+      if (unresolved.length > 0) {
+        unresolved.forEach((id) => {
+          const fromMock = mockUsers.find(u => String(u.id) === String(id));
+          if (fromMock) {
+            const derived: User = {
+              id: String(fromMock.id),
+              name: fromMock.name,
+              email: (fromMock as any).email || `${fromMock.id}@example.com`,
+              avatar: (fromMock as any).avatar || undefined,
+            } as User;
+            hostsMap[id] = derived;
+            hostsCache.set(id, derived);
+            cacheExpiry.set(`host_${id}`, Date.now() + CACHE_DURATION);
+            console.log(`🪄 Derived host from mockUsers for ${id}: ${fromMock.name}`);
+          }
+        });
+      }
     } catch (error) {
       console.error('Error batch fetching hosts:', error);
     }
@@ -97,8 +127,11 @@ export const createRoom = async (roomData: Omit<Room, 'id' | 'participants' | 'c
       createdAt: serverTimestamp()
     };
     
-    // Add room to Firestore
+    // Add room to Firestore (rooms)
     await setDoc(roomRef, newRoom);
+
+    // Also add to user-created activities collection (activities)
+    await setDoc(doc(userActivitiesCollection, roomId), newRoom);
     
     // Update user's joinedRooms array
     const userRef = doc(usersCollection, userId);
@@ -218,88 +251,71 @@ export const getAllRooms = async (): Promise<Room[]> => {
   }
 };
 
-// Get all activities from the activities_upl collection with caching and pagination
+// Get all activities from curated and user-created collections
 export const getAllActivities = async (limitCount?: number, lastDoc?: any): Promise<Room[]> => {
   const cacheKey = `all_activities_${limitCount}_${lastDoc?.id || 'first'}`;
   
-  // Check cache first
   if (activitiesCache.has(cacheKey) && isCacheValid(cacheKey)) {
     console.log('📦 Using cached activities');
     return activitiesCache.get(cacheKey)!;
   }
   
   try {
-    console.log('🚀 Fetching activities from Firestore...');
-    let q = query(activitiesCollection, orderBy('dateTime', 'asc')); // Sort by date ascending (earliest first)
-    
-    if (limitCount) {
-      q = query(activitiesCollection, orderBy('dateTime', 'asc'), limit(limitCount));
-    }
-    
-    if (lastDoc) {
-      if (limitCount) {
-        q = query(activitiesCollection, orderBy('dateTime', 'asc'), startAfter(lastDoc), limit(limitCount));
-      } else {
-        q = query(activitiesCollection, orderBy('dateTime', 'asc'), startAfter(lastDoc));
+    console.log('🚀 Fetching activities from Firestore (curated + user created)...');
+
+    // Helper to read a collection with shared normalization
+    const readCollection = async (coll: any) => {
+      let q = query(coll, orderBy('dateTime', 'asc'));
+      if (limitCount) q = query(coll, orderBy('dateTime', 'asc'), limit(limitCount));
+      if (lastDoc) {
+        if (limitCount) {
+          q = query(coll, orderBy('dateTime', 'asc'), startAfter(lastDoc), limit(limitCount));
+        } else {
+          q = query(coll, orderBy('dateTime', 'asc'), startAfter(lastDoc));
+        }
       }
-    }
-    
-    const querySnapshot = await getDocs(q);
-    const activitiesData: DocumentData[] = [];
-    const hostIds: string[] = [];
-    
-    // First, collect all activity data and host IDs
-    querySnapshot.forEach(doc => {
-      const data = doc.data();
-      
-      // Convert participants from User objects to user IDs if needed
-      let participants = data.participants || [];
-      if (participants.length > 0 && typeof participants[0] === 'object') {
-        participants = participants.map((p: any) => p.id || p);
-      }
-      
-      // Convert approvedParticipants from User objects to user IDs if needed
-      let approvedParticipants = data.approvedParticipants || [data.hostId];
-      if (approvedParticipants.length > 0 && typeof approvedParticipants[0] === 'object') {
-        approvedParticipants = approvedParticipants.map((p: any) => p.id || p);
-      }
-      
-      activitiesData.push({ 
-        id: doc.id, 
-        ...data,
-        participants: participants,
-        approvedParticipants: approvedParticipants,
-        pendingRequests: data.pendingRequests || []
+      const snap = await getDocs(q);
+      const items: DocumentData[] = [];
+      const hostIds: string[] = [];
+
+      snap.forEach(docSnap => {
+        const data = docSnap.data();
+        let participants = data.participants || [];
+        if (participants.length > 0 && typeof participants[0] === 'object') {
+          participants = participants.map((p: any) => p.id || p);
+        }
+        let approvedParticipants = data.approvedParticipants || [data.hostId];
+        if (approvedParticipants.length > 0 && typeof approvedParticipants[0] === 'object') {
+          approvedParticipants = approvedParticipants.map((p: any) => p.id || p);
+        }
+        const rawSportType = data.sportType;
+        const normalizedSportType = typeof rawSportType === 'string' ? rawSportType.replace(/^SportType\./, '') : rawSportType;
+        items.push({ id: docSnap.id, ...data, sportType: normalizedSportType, participants, approvedParticipants, pendingRequests: data.pendingRequests || [] });
+        if (data.hostId) hostIds.push(data.hostId);
       });
-      if (data.hostId) hostIds.push(data.hostId);
-    });
-    
-    // Then batch fetch all hosts data (with caching)
-    const hostsMap = await fetchHostsData(hostIds);
-    
-    // Finally, combine activity data with host data
-    const result = activitiesData.map(activity => {
-      const host = hostsMap[activity.hostId];
-      // If host is missing, create a fallback host object
-      const fallbackHost = host || {
-        id: activity.hostId,
-        name: `User ${activity.hostId}`,
-        email: `${activity.hostId}@example.com`,
-        avatar: `https://randomuser.me/api/portraits/${Math.random() > 0.5 ? 'men' : 'women'}/${Math.floor(Math.random() * 100)}.jpg`
-      };
-      
-      return {
-        ...activity,
-        host: fallbackHost,
-        hostName: activity.hostName || fallbackHost.name
-      };
-    }) as Room[];
-    
-    // Cache the result
-    setCache(cacheKey, result);
-    console.log(`✅ Cached ${result.length} activities`);
-    
-    return result;
+      const hostsMap = await fetchHostsData(hostIds);
+      return items.map(activity => {
+        const host = hostsMap[activity.hostId];
+        if (host) {
+          return { ...activity, host, hostName: host.name } as Room;
+        }
+        const fallbackHost = { id: activity.hostId, name: `User ${activity.hostId}`, email: `${activity.hostId}@example.com`, avatar: `https://randomuser.me/api/portraits/${Math.random() > 0.5 ? 'men' : 'women'}/${Math.floor(Math.random() * 100)}.jpg` };
+        return { ...activity, host: fallbackHost, hostName: fallbackHost.name } as Room;
+      });
+    };
+
+    const [curated, userCreated] = await Promise.all([
+      readCollection(activitiesCollection),
+      readCollection(userActivitiesCollection),
+    ]);
+
+    // Merge and sort
+    const merged = [...curated, ...userCreated];
+    merged.sort((a, b) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime());
+
+    setCache(cacheKey, merged);
+    console.log(`✅ Cached ${merged.length} activities (curated + user)`);
+    return merged;
   } catch (error) {
     console.error("Error getting activities:", error);
     throw error;
@@ -367,18 +383,28 @@ export const getActivitiesBySport = async (sportType: string, limitCount?: numbe
     // Finally, combine activity data with host data
     const result = activitiesData.map(activity => {
       const host = hostsMap[activity.hostId];
-      // If host is missing, create a fallback host object
-      const fallbackHost = host || {
+      
+      // Always prioritize real host data from users collection
+      if (host) {
+        return {
+          ...activity,
+          host: host,
+          hostName: host.name // Always use the real name from users collection
+        };
+      }
+      
+      // Fallback only if host is not found in users collection
+      const fallbackHost = {
         id: activity.hostId,
         name: `User ${activity.hostId}`,
         email: `${activity.hostId}@example.com`,
         avatar: `https://randomuser.me/api/portraits/${Math.random() > 0.5 ? 'men' : 'women'}/${Math.floor(Math.random() * 100)}.jpg`
       };
-      
+
       return {
         ...activity,
         host: fallbackHost,
-        hostName: activity.hostName || fallbackHost.name
+        hostName: fallbackHost.name
       };
     }) as Room[];
     
@@ -1072,4 +1098,114 @@ export const clearAllCache = () => {
   hostsCache.clear();
   cacheExpiry.clear();
   console.log('🧹 Cleared all cache');
-}; 
+};
+
+export const getSentRequests = async (userId: string): Promise<JoinRequest[]> => {
+  try {
+    let querySnapshot;
+    try {
+      const q = query(
+        collection(db, "joinRequests"),
+        where("userId", "==", userId),
+        orderBy("requestedAt", "desc")
+      );
+      querySnapshot = await getDocs(q);
+    } catch {
+      const q = query(
+        collection(db, "joinRequests"),
+        where("userId", "==", userId)
+      );
+      querySnapshot = await getDocs(q);
+    }
+
+    const requests: JoinRequest[] = [];
+    const roomIds: string[] = [];
+
+    querySnapshot.forEach((docSnap) => {
+      const data = docSnap.data();
+      requests.push({ id: docSnap.id, ...data } as JoinRequest);
+      roomIds.push(data.roomId);
+    });
+
+    // Fetch related activities/rooms
+    const roomsMap: Record<string, Room> = {};
+    // Try activities_upl first in chunks of 10 using __name__ in
+    for (let i = 0; i < roomIds.length; i += 10) {
+      const batch = roomIds.slice(i, i + 10);
+      try {
+        const qActs = query(activitiesCollection, where('__name__', 'in', batch));
+        const actsSnap = await getDocs(qActs);
+        actsSnap.forEach((s) => {
+          const d: any = s.data();
+          roomsMap[s.id] = {
+            id: s.id,
+            ...d,
+          } as Room;
+        });
+      } catch {}
+    }
+
+    // Fallback: fetch from rooms collection for any missing
+    const missing = roomIds.filter((id) => !roomsMap[id]);
+    for (let i = 0; i < missing.length; i += 10) {
+      const batch = missing.slice(i, i + 10);
+      try {
+        const qRooms = query(roomsCollection, where('__name__', 'in', batch));
+        const roomsSnap = await getDocs(qRooms);
+        roomsSnap.forEach((s) => {
+          const d: any = s.data();
+          roomsMap[s.id] = { id: s.id, ...d } as Room;
+        });
+      } catch {}
+    }
+
+    // Attach room data
+    const enriched = requests.map((req) => ({
+      ...req,
+      room: roomsMap[req.roomId],
+    }));
+
+    return enriched;
+  } catch (error) {
+    console.error('Error getting sent requests:', error);
+    throw error;
+  }
+};
+
+export const cancelRequestById = async (requestId: string): Promise<void> => {
+  try {
+    const requestRef = doc(db, 'joinRequests', requestId);
+    const snap = await getDoc(requestRef);
+    if (!snap.exists()) throw new Error('Request not found');
+    const data = snap.data() as any;
+    const { roomId, userId } = data;
+
+    // Remove from activity or room pendingRequests
+    let activityRef = doc(activitiesCollection, roomId);
+    let activityDoc = await getDoc(activityRef);
+    if (!activityDoc.exists()) {
+      activityRef = doc(roomsCollection, roomId);
+      activityDoc = await getDoc(activityRef);
+    }
+    if (activityDoc.exists()) {
+      const activityData = activityDoc.data() as any;
+      const pending = (activityData.pendingRequests || []).filter((id: string) => id !== requestId);
+      await updateDoc(activityRef, { pendingRequests: pending });
+    }
+
+    // Remove from user's pendingRequests
+    const userRef = doc(usersCollection, userId);
+    const userDoc = await getDoc(userRef);
+    if (userDoc.exists()) {
+      const userData = userDoc.data() as any;
+      const pending = (userData.pendingRequests || []).filter((id: string) => id !== requestId);
+      await updateDoc(userRef, { pendingRequests: pending });
+    }
+
+    // Finally delete the request
+    await deleteDoc(requestRef);
+  } catch (error) {
+    console.error('Error cancelling request by id:', error);
+    throw error;
+  }
+};
