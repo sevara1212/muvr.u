@@ -303,39 +303,81 @@ export function useFirebaseAuth() {
       
       console.log('📋 Retrieved pending signup data for:', email);
 
-      // Create Firebase Auth user now
-      console.log('🔐 Creating Firebase Auth user after OTP...');
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const firebaseUser = userCredential.user;
-
-      await updateProfile(firebaseUser, { displayName: name });
-
-      // Create Firestore user document
-      console.log('📄 Creating Firestore user document...');
-      const userData = {
-        name,
-        email,
-        avatar: "",
-        interests: [],
-        activityLevel: ActivityLevel.Beginner,
-        joinedDate: new Date().toISOString(),
-        joinedRooms: [],
-        gender,
-        age,
-        preferredGender: 'Both',
-        preferredAgeRange: { min: 14, max: 60 }
-      };
-      await setDoc(doc(usersCollection, firebaseUser.uid), userData, { merge: true });
-
-      const currentUser = { id: firebaseUser.uid, ...userData } as User;
-      setAuthState({ currentUser, firebaseUser, loading: false, error: null });
+      try {
+        // Try to create a fresh Firebase Auth user
+        console.log('🔐 Creating Firebase Auth user after OTP...');
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const firebaseUser = userCredential.user;
+        await updateProfile(firebaseUser, { displayName: name });
+        
+        // Create Firestore user document
+        console.log('📄 Creating Firestore user document...');
+        const userData = {
+          name,
+          email,
+          avatar: "",
+          interests: [],
+          activityLevel: ActivityLevel.Beginner,
+          joinedDate: new Date().toISOString(),
+          joinedRooms: [],
+          gender,
+          age,
+          preferredGender: 'Both',
+          preferredAgeRange: { min: 14, max: 60 }
+        };
+        await setDoc(doc(usersCollection, firebaseUser.uid), userData, { merge: true });
+        
+        const currentUser = { id: firebaseUser.uid, ...userData } as User;
+        setAuthState({ currentUser, firebaseUser, loading: false, error: null });
+      } catch (err: any) {
+        // If the email is already registered in Firebase Auth, sign in and backfill Firestore
+        if (err?.code === 'auth/email-already-in-use') {
+          console.warn('⚠️ Email already in use. Attempting sign-in and profile backfill...');
+          // Attempt sign-in with the provided password
+          const cred = await signInWithEmailAndPassword(auth, email, password).catch((e) => {
+            // If wrong password, surface a clear error
+            if (e?.code === 'auth/wrong-password') {
+              throw new Error('This email is already registered. Please log in with your password.');
+            }
+            throw e;
+          });
+          const firebaseUser = cred.user;
+          // Ensure display name is set
+          try { await updateProfile(firebaseUser, { displayName: name }); } catch {}
+          
+          // Ensure Firestore user exists
+          const userRef = doc(usersCollection, firebaseUser.uid);
+          const snap = await getDoc(userRef);
+          if (!snap.exists()) {
+            const userData = {
+              name,
+              email,
+              avatar: "",
+              interests: [],
+              activityLevel: ActivityLevel.Beginner,
+              joinedDate: new Date().toISOString(),
+              joinedRooms: [],
+              gender,
+              age,
+              preferredGender: 'Both',
+              preferredAgeRange: { min: 14, max: 60 }
+            };
+            await setDoc(userRef, userData, { merge: true });
+            setAuthState({ currentUser: { id: firebaseUser.uid, ...userData } as User, firebaseUser, loading: false, error: null });
+          } else {
+            const data = snap.data() as any;
+            setAuthState({ currentUser: { id: firebaseUser.uid, ...data } as User, firebaseUser, loading: false, error: null });
+          }
+        } else {
+          throw err;
+        }
+      }
 
       // Clear pending data
       localStorage.removeItem('pending_signup');
       localStorage.removeItem('signup_email');
       localStorage.removeItem('signup_name');
 
-      checkApprovedRequests(firebaseUser.uid);
       return { success: true };
     } catch (error: any) {
       console.error('❌ Finalize signup failed:', error);

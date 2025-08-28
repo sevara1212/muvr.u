@@ -7,7 +7,7 @@ import { ArrowLeft, Calendar, MapPin, Users, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { getAllActivities, getJoinedRooms } from '@/services/roomService';
+import { getAllActivities, getJoinedRooms, getUserInvolvedActivities, getUserHostedActivities, getUserAcceptedActivities } from '@/services/roomService';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { formatDateTime, formatDuration } from '@/lib/utils';
@@ -30,30 +30,27 @@ const UpcomingPage: React.FC = () => {
   const loadUpcomingActivities = async () => {
     try {
       setLoading(true);
-      // Fetch curated activities and rooms the user joined/created, then merge
-      const [allActivities, joinedRooms] = await Promise.all([
-        getAllActivities(),
-        getJoinedRooms(currentUser!.id)
+      const userId = currentUser!.id;
+
+      const [hosted, accepted] = await Promise.all([
+        getUserHostedActivities(userId),
+        getUserAcceptedActivities(userId)
       ]);
 
-      // Merge by id (rooms and activities may have different ids; we just combine)
-      const combined: Room[] = [...allActivities, ...joinedRooms];
+      let involved = [...hosted, ...accepted];
+      // Fallback: if still empty, try broad involved query
+      if (involved.length === 0) {
+        involved = await getUserInvolvedActivities(userId);
+      }
 
       const now = new Date();
-      // Activities user is involved in (host or participant)
-      const involved = combined.filter(a =>
-        (a.hostId === currentUser?.id) || (a.participants || []).includes(currentUser!.id)
-      );
-
       const current = involved.filter(a => new Date(a.dateTime) > now)
         .sort((a, b) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime());
-
       const past = involved.filter(a => new Date(a.dateTime) <= now)
         .sort((a, b) => new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime());
 
       (current as any).__kind = 'current';
       (past as any).__kind = 'past';
-
       setUpcomingActivities([...current, ...past]);
     } catch (error) {
       console.error('Error loading upcoming activities:', error);

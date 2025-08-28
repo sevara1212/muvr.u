@@ -74,21 +74,7 @@ const SignupPage = () => {
   };
 
   // Test EmailJS function
-  const testEmailJS = async () => {
-    try {
-      console.log('🧪 Testing EmailJS...');
-      const result = await emailService.sendOTP('test@example.com', 'Test User');
-      console.log('🧪 EmailJS test result:', result);
-      if (result.success) {
-        toast.success('EmailJS test successful! Check console for details.');
-      } else {
-        toast.error(`EmailJS test failed: ${result.error}`);
-      }
-    } catch (error) {
-      console.error('🧪 EmailJS test error:', error);
-      toast.error('EmailJS test failed');
-    }
-  };
+  const testEmailJS = async () => {};
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -281,13 +267,7 @@ const SignupPage = () => {
           </Button>
           
           {/* Test EmailJS button - remove in production */}
-          <Button 
-            type="button" 
-            onClick={testEmailJS}
-            className="w-full py-2 rounded bg-gray-500 text-white font-bold text-base mt-2 hover:bg-gray-600 transition"
-          >
-            Test EmailJS
-          </Button>
+          {/* Removed: EmailJS test button since we now use Brevo OTP API */}
           
           <div className="text-center text-xs mt-3 text-gray-500">
             Already have an account?{' '}

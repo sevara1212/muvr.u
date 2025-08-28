@@ -1209,3 +1209,128 @@ export const cancelRequestById = async (requestId: string): Promise<void> => {
     throw error;
   }
 };
+
+export const getUserInvolvedActivities = async (userId: string): Promise<Room[]> => {
+  try {
+    const collectFrom = async (coll: any) => {
+      const results: DocumentData[] = [];
+      const ids = new Set<string>();
+
+      // host
+      try {
+        const qHost = query(coll, where('hostId', '==', userId));
+        const snap = await getDocs(qHost);
+        snap.forEach(d => { if (!ids.has(d.id)) { ids.add(d.id); results.push({ id: d.id, ...d.data() }); } });
+      } catch {}
+
+      // participants
+      try {
+        const qPart = query(coll, where('participants', 'array-contains', userId));
+        const snap = await getDocs(qPart);
+        snap.forEach(d => { if (!ids.has(d.id)) { ids.add(d.id); results.push({ id: d.id, ...d.data() }); } });
+      } catch {}
+
+      // approvedParticipants
+      try {
+        const qApproved = query(coll, where('approvedParticipants', 'array-contains', userId));
+        const snap = await getDocs(qApproved);
+        snap.forEach(d => { if (!ids.has(d.id)) { ids.add(d.id); results.push({ id: d.id, ...d.data() }); } });
+      } catch {}
+
+      // normalize host names and participants similar to getAllActivities
+      const hostIds: string[] = [];
+      results.forEach((r: any) => { if (r.hostId) hostIds.push(r.hostId); });
+      const hostsMap = await fetchHostsData(hostIds);
+      return results.map((activity: any) => {
+        let participants = activity.participants || [];
+        if (participants.length > 0 && typeof participants[0] === 'object') {
+          participants = participants.map((p: any) => p.id || p);
+        }
+        let approvedParticipants = activity.approvedParticipants || [activity.hostId];
+        if (approvedParticipants.length > 0 && typeof approvedParticipants[0] === 'object') {
+          approvedParticipants = approvedParticipants.map((p: any) => p.id || p);
+        }
+        const rawSportType = activity.sportType;
+        const normalizedSportType = typeof rawSportType === 'string' ? rawSportType.replace(/^SportType\./, '') : rawSportType;
+        const host = hostsMap[activity.hostId];
+        const hostName = host?.name || activity.hostName || `User ${activity.hostId}`;
+        return { id: activity.id, ...activity, sportType: normalizedSportType, participants, approvedParticipants, host, hostName } as Room;
+      });
+    };
+
+    const [fromCurated, fromUserCreated, fromRooms] = await Promise.all([
+      collectFrom(activitiesCollection),
+      collectFrom(userActivitiesCollection),
+      collectFrom(roomsCollection),
+    ]);
+
+    // merge unique by id preferring room/user-created over curated
+    const map = new Map<string, Room>();
+    [...fromCurated, ...fromUserCreated, ...fromRooms].forEach(a => { map.set(a.id, a); });
+    return Array.from(map.values());
+  } catch (e) {
+    console.error('Error fetching user involved activities:', e);
+    return [];
+  }
+};
+
+export const getUserHostedActivities = async (userId: string): Promise<Room[]> => {
+  try {
+    const q = query(roomsCollection, where('hostId', '==', userId));
+    const snap = await getDocs(q);
+    const rooms: Room[] = [];
+    const hostMap = await fetchHostsData([userId]);
+    snap.forEach(s => {
+      const d: any = s.data();
+      rooms.push({ id: s.id, ...d, host: hostMap[userId], hostName: hostMap[userId]?.name || d.hostName } as Room);
+    });
+    return rooms;
+  } catch (e) {
+    console.error('Error fetching hosted rooms:', e);
+    return [];
+  }
+};
+
+export const getUserAcceptedActivities = async (userId: string): Promise<Room[]> => {
+  try {
+    const requestsQ = query(collection(db, 'joinRequests'), where('userId', '==', userId), where('status', '==', 'approved'));
+    const reqSnap = await getDocs(requestsQ);
+    const roomIds: string[] = [];
+    reqSnap.forEach(d => { const data: any = d.data(); if (data.roomId) roomIds.push(data.roomId); });
+    if (roomIds.length === 0) return [];
+
+    const fetchByIds = async (coll: any, ids: string[]) => {
+      const results: Room[] = [];
+      for (let i = 0; i < ids.length; i += 10) {
+        const batch = ids.slice(i, i + 10);
+        try {
+          const q = query(coll, where('__name__', 'in', batch));
+          const snap = await getDocs(q);
+          const hostIds: string[] = [];
+          const items: any[] = [];
+          snap.forEach(s => { const d: any = s.data(); items.push({ id: s.id, ...d }); if (d.hostId) hostIds.push(d.hostId); });
+          const hostsMap = await fetchHostsData(hostIds);
+          items.forEach(it => {
+            const host = hostsMap[it.hostId];
+            const hostName = host?.name || it.hostName;
+            results.push({ id: it.id, ...it, host, hostName } as Room);
+          });
+        } catch (e) { console.warn('batch fetch failed', e); }
+      }
+      return results;
+    };
+
+    const [fromCurated, fromRooms, fromUser] = await Promise.all([
+      fetchByIds(activitiesCollection, roomIds),
+      fetchByIds(roomsCollection, roomIds),
+      fetchByIds(userActivitiesCollection, roomIds),
+    ]);
+
+    const map = new Map<string, Room>();
+    [...fromCurated, ...fromRooms, ...fromUser].forEach(a => map.set(a.id, a));
+    return Array.from(map.values());
+  } catch (e) {
+    console.error('Error fetching accepted activities:', e);
+    return [];
+  }
+};
