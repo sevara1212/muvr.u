@@ -407,19 +407,19 @@ const RoomChat = ({ roomId, isOpen, onClose }: RoomChatProps) => {
           {chatLoading ? (
             <div className="flex items-center justify-center py-12">
               <div className="flex flex-col items-center gap-3">
-                <Loader2 className="h-8 w-8 text-purple-500 animate-spin" />
-                <p className="text-gray-500 text-sm">Loading messages...</p>
+                <Loader2 className="h-8 w-8 text-white animate-spin" />
+                <p className="text-white/70 text-sm">Loading messages...</p>
               </div>
             </div>
           ) : error && !subscriptionEstablished ? (
             <div className="text-center py-8">
-              <div className="p-4 bg-red-50 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                <MessageCircle className="h-8 w-8 text-red-400" />
+              <div className="p-4 bg-red-500/20 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                <MessageCircle className="h-8 w-8 text-red-300" />
               </div>
-              <h4 className="font-medium text-gray-900 mb-2">Connection Error</h4>
-              <p className="text-sm text-gray-500 mb-4">{error}</p>
+              <h4 className="font-medium text-white mb-2">Connection Error</h4>
+              <p className="text-sm text-white/70 mb-4">{error}</p>
               {retrying && (
-                <div className="flex items-center justify-center gap-2 text-sm text-gray-600">
+                <div className="flex items-center justify-center gap-2 text-sm text-white/70">
                   <Loader2 className="h-4 w-4 animate-spin" />
                   <span>Reconnecting...</span>
                 </div>
@@ -438,7 +438,7 @@ const RoomChat = ({ roomId, isOpen, onClose }: RoomChatProps) => {
                       setChatLoading(false);
                     });
                 }}
-                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm"
+                className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors text-sm"
                 disabled={retrying}
               >
                 {retrying ? "Reconnecting..." : "Retry Connection"}
@@ -446,18 +446,18 @@ const RoomChat = ({ roomId, isOpen, onClose }: RoomChatProps) => {
             </div>
           ) : messages.length === 0 ? (
             <div className="text-center py-12">
-              <div className="p-4 bg-purple-50 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                <MessageCircle className="h-8 w-8 text-purple-400" />
+              <div className="p-4 bg-white/20 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                <MessageCircle className="h-8 w-8 text-white" />
               </div>
-              <h4 className="font-medium text-gray-900 mb-2">No messages yet</h4>
-              <p className="text-sm text-gray-500">Start the conversation with your activity participants!</p>
+              <h4 className="font-medium text-white mb-2">No messages yet</h4>
+              <p className="text-sm text-white/70">Start the conversation with your activity participants!</p>
             </div>
           ) : (
             groupedMessages.map(({ date, messages: dayMessages }, groupIdx) => (
               <div key={groupIdx} className="space-y-3">
                 {/* Date separator */}
                 <div className="flex items-center justify-center">
-                  <div className="bg-white px-3 py-1 rounded-full text-xs text-gray-500 font-medium shadow-sm">
+                  <div className="bg-white/20 px-3 py-1 rounded-full text-xs text-white font-medium shadow-sm">
                     {date}
                   </div>
                 </div>
@@ -517,9 +517,9 @@ const RoomChat = ({ roomId, isOpen, onClose }: RoomChatProps) => {
 
       {/* Connection Status */}
       {connectionStatus !== 'connected' && (
-        <div className="sticky bottom-0 left-0 right-0 bg-yellow-50 border-t border-yellow-200 p-2 z-20">
-          <div className="flex items-center justify-center gap-2 text-sm text-yellow-800 max-w-4xl mx-auto">
-            <div className={`w-2 h-2 rounded-full ${connectionStatus === 'connecting' ? 'bg-yellow-500 animate-pulse' : 'bg-red-500'}`}></div>
+        <div className="sticky bottom-0 left-0 right-0 bg-yellow-500/20 border-t border-yellow-500/30 p-2 z-20">
+          <div className="flex items-center justify-center gap-2 text-sm text-yellow-200 max-w-4xl mx-auto">
+            <div className={`w-2 h-2 rounded-full ${connectionStatus === 'connecting' ? 'bg-yellow-400 animate-pulse' : 'bg-red-400'}`}></div>
             <span>
               {connectionStatus === 'connecting' ? 'Connecting...' : 'Connection lost'}
             </span>
@@ -528,27 +528,27 @@ const RoomChat = ({ roomId, isOpen, onClose }: RoomChatProps) => {
       )}
 
       {/* Message Input */}
-      <div className="sticky bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 z-10">
+      <div className="sticky bottom-0 left-0 right-0 bg-[#35179d] border-t border-white/20 p-4 z-10">
         <div className="flex gap-3 items-end max-w-4xl mx-auto">
           <Input
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
             onKeyPress={handleKeyPress}
             placeholder={roomLoading ? "Loading chat permissions..." : isApproved ? "Type your message..." : "You must be approved to chat"}
-            className="flex-1 border-gray-300 focus:border-[#35179d] focus:ring-[#35179d]/20 rounded-full px-4 py-3 text-sm"
+            className="flex-1 border-white/30 bg-white/10 text-white placeholder-white/60 focus:border-white/50 focus:ring-white/20 rounded-full px-4 py-3 text-sm"
             disabled={sending || !isApproved || roomLoading}
             autoFocus
           />
           <Button
             onClick={handleSendMessage}
             disabled={!newMessage.trim() || sending || !isApproved || roomLoading}
-            className="bg-[#35179d] hover:bg-[#2a146a] rounded-full p-3 h-12 w-12 flex-shrink-0 shadow-md transition-all duration-200 disabled:opacity-50"
+            className="bg-orange-500 hover:bg-orange-600 rounded-full p-3 h-12 w-12 flex-shrink-0 shadow-md transition-all duration-200 disabled:opacity-50"
           >
             {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </Button>
         </div>
         {!roomLoading && !isApproved && (
-          <div className="text-center text-xs text-gray-500 mt-2 max-w-4xl mx-auto">
+          <div className="text-center text-xs text-white/70 mt-2 max-w-4xl mx-auto">
             You must be approved by the host to send messages in this chat.
           </div>
         )}

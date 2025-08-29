@@ -39,7 +39,7 @@ def send_email(recipient: str, subject: str, body: str):
     msg["Subject"] = subject
     msg["From"] = formataddr((SENDER_NAME, SENDER))
     msg["To"] = recipient
-    with smtplib.SMTP(SMTP_SERVER, SMTP_PORT, timeout=15) as s:
+    with smtplib.SMTP(SMTP_SERVER, SMTP_PORT, timeout=8) as s:
         s.starttls()
         s.login(SMTP_LOGIN, SMTP_PASSWORD)
         s.sendmail(SENDER, [recipient], msg.as_string())
@@ -58,11 +58,11 @@ def send_otp(req: SendOTPReq, background: BackgroundTasks):
 
     body = (
         "Dear user,\n\n"
-        f"Your one-time password (OTP) for login is: {code}  \n"
-        "This code is valid for 5 minutes.  \n\n"
-        "For your security, please do not share this code with anyone.  \n"
+        f"Your one-time password (OTP) for login is: {code}\n"
+        "This code is valid for 5 minutes.\n\n"
+        "For your security, please do not share this code with anyone.\n"
         "If you did not request this OTP, you can safely ignore this message.\n\n"
-        "Thank you,  \n"
+        "Thank you,\n"
         "The Muvr Team"
     )
     background.add_task(send_email, email, "Your OTP Code", body)

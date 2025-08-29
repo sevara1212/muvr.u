@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { Room } from '@/types';
-import { ArrowLeft, Calendar, MapPin, Users, Clock } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, Users, Clock, MessageCircle, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -16,7 +16,14 @@ const UpcomingPage: React.FC = () => {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
   const [upcomingActivities, setUpcomingActivities] = useState<Room[]>([]);
+  const [currentActivities, setCurrentActivities] = useState<Room[]>([]);
+  const [pastActivities, setPastActivities] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+    upcoming: 0,
+    thisMonth: 0,
+    avgRating: 4.8
+  });
 
   useEffect(() => {
     if (!currentUser) {
@@ -49,9 +56,20 @@ const UpcomingPage: React.FC = () => {
       const past = involved.filter(a => new Date(a.dateTime) <= now)
         .sort((a, b) => new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime());
 
-      (current as any).__kind = 'current';
-      (past as any).__kind = 'past';
+      setCurrentActivities(current);
+      setPastActivities(past);
       setUpcomingActivities([...current, ...past]);
+
+      // Calculate stats
+      const thisMonth = new Date();
+      thisMonth.setMonth(thisMonth.getMonth() - 1);
+      const thisMonthActivities = involved.filter(a => new Date(a.dateTime) >= thisMonth).length;
+
+      setStats({
+        upcoming: current.length,
+        thisMonth: thisMonthActivities,
+        avgRating: 4.8 // This could be calculated from actual ratings
+      });
     } catch (error) {
       console.error('Error loading upcoming activities:', error);
       toast.error('Failed to load upcoming activities');
@@ -145,7 +163,7 @@ const UpcomingPage: React.FC = () => {
               className="mr-3 cursor-pointer text-white" 
               onClick={() => navigate(-1)}
             />
-            <h1 className="text-xl font-bold text-white">Upcoming Activities</h1>
+            <h1 className="text-xl font-bold text-white">My Events</h1>
           </div>
           <Button 
             onClick={() => navigate('/activities')}
@@ -157,174 +175,139 @@ const UpcomingPage: React.FC = () => {
           </Button>
         </div>
 
-        {upcomingActivities.length === 0 ? (
-          <div className="text-center py-12">
-            <Calendar size={48} className="text-white/50 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-white mb-2">No upcoming activities</h3>
-            <p className="text-white/70 mb-4">Join some activities to see them here!</p>
-            <Button 
-              onClick={() => navigate('/activities')}
-              className="bg-[#ff8800] text-white hover:bg-orange-600"
-            >
-              Discover Activities
-            </Button>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            {/* Current activities */}
-            {upcomingActivities.some((a: any) => a.__kind === 'current') && (
-              <div>
-                <h2 className="text-white font-semibold mb-2">Current Activities</h2>
-                <div className="space-y-4">
-                  {upcomingActivities.filter((a: any) => a.__kind === 'current').map((activity) => (
-                    <Card 
-                      key={activity.id}
-                      className="bg-white/10 backdrop-blur-sm border-white/20 cursor-pointer hover:bg-white/20 transition-all"
-                      onClick={() => navigate(`/room/${activity.id}`)}
-                    >
-                      <CardContent className="p-4">
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
-                              <span className="text-xl">{getSportIcon(activity.sportType)}</span>
-                            </div>
-                            <div>
-                              <h3 className="font-semibold text-white">{activity.title}</h3>
-                              <Badge variant="secondary" className="text-xs bg-white/20 text-white">
-                                {activity.sportType}
-                              </Badge>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <Badge variant="outline" className="text-xs text-green-300 border-green-300/30">
-                              {getTimeUntilActivity(activity.dateTime)}
-                            </Badge>
-                          </div>
-                        </div>
-
-                        <div className="space-y-2 text-sm text-white/80">
-                          <div className="flex items-center gap-2">
-                            <Calendar size={14} />
-                            <span>{formatDateTime(activity.dateTime)}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Clock size={14} />
-                            <span>{formatDuration(activity.duration)}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <MapPin size={14} />
-                            <span>{activity.location.address}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Users size={14} />
-                            <span>
-                              {activity.participants?.length || 0}/{activity.maxParticipants} participants
-                            </span>
-                          </div>
-                        </div>
-
-                        <div className="mt-3 pt-3 border-t border-white/20">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs text-white/60">
-                              Hosted by {activity.host?.name || activity.hostName || 'Unknown'}
-                            </span>
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              className="bg-orange-500 text-white border-orange-500 hover:bg-orange-600 hover:border-orange-600"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigate(`/room/${activity.id}`);
-                              }}
-                            >
-                              View Details
-                            </Button>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+        <div className="space-y-6">
+          {/* Activity Summary Card - Always Show */}
+          <Card className="bg-purple-600 text-white border-0 shadow-lg">
+            <CardContent className="p-6">
+              <h2 className="text-xl font-bold mb-4">Your Activity Summary</h2>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="text-center">
+                  <div className="text-2xl font-bold">{stats.upcoming}</div>
+                  <div className="text-sm text-purple-100">Upcoming</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold">{stats.thisMonth}</div>
+                  <div className="text-sm text-purple-100">This Month</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold">{stats.avgRating}</div>
+                  <div className="text-sm text-purple-100 flex items-center justify-center gap-1">
+                    <Star size={12} className="fill-yellow-400 text-yellow-400" />
+                    Avg Rating
+                  </div>
                 </div>
               </div>
-            )}
+            </CardContent>
+          </Card>
 
-            {/* Past activities */}
-            {upcomingActivities.some((a: any) => a.__kind === 'past') && (
-              <div>
-                <h2 className="text-white font-semibold mt-4 mb-2">Past Activities</h2>
-                <div className="space-y-4">
-                  {upcomingActivities.filter((a: any) => a.__kind === 'past').map((activity) => (
-                    <Card 
-                      key={activity.id}
-                      className="bg-white/5 backdrop-blur-sm border-white/10"
-                    >
-                      <CardContent className="p-4">
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
-                              <span className="text-xl">{getSportIcon(activity.sportType)}</span>
-                            </div>
-                            <div>
-                              <h3 className="font-semibold text-white">{activity.title}</h3>
-                              <Badge variant="secondary" className="text-xs bg-white/20 text-white">
-                                {activity.sportType}
-                              </Badge>
-                            </div>
+          {/* Content Based on Activities */}
+          {upcomingActivities.length === 0 ? (
+            <div className="text-center py-12">
+              <Calendar size={48} className="text-white/50 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-white mb-2">No upcoming activities</h3>
+              <p className="text-white/70 mb-4">Join some activities to see them here!</p>
+              <Button 
+                onClick={() => navigate('/activities')}
+                className="bg-orange-500 text-white hover:bg-orange-600"
+              >
+                Discover Activities
+              </Button>
+            </div>
+          ) : (
+            <>
+              {/* Activity List */}
+              <div className="space-y-4">
+                {currentActivities.map((activity) => (
+                  <Card 
+                    key={activity.id}
+                    className="bg-white border border-gray-200 shadow-sm hover:shadow-md transition-all cursor-pointer"
+                    onClick={() => navigate(`/room/${activity.id}`)}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-4">
+                        {/* Sport Icon */}
+                        <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
+                          <span className="text-xl">{getSportIcon(activity.sportType)}</span>
+                        </div>
+                        
+                        {/* Activity Info */}
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold text-gray-900 text-base mb-1">{activity.title}</h3>
+                          <div className="flex items-center gap-4 text-sm text-gray-600">
+                            <span>{getTimeUntilActivity(activity.dateTime)}</span>
+                            <span>•</span>
+                            <span>{activity.location?.address || 'Location TBD'}</span>
+                            <span>•</span>
+                            <span>{activity.participants?.length || 0} people</span>
                           </div>
-                          <div className="text-right">
-                            <Badge variant="outline" className="text-xs text-green-300 border-green-300/30">
-                              {getTimeUntilActivity(activity.dateTime)}
+                        </div>
+                        
+                        {/* Status Badge */}
+                        <div className="flex flex-col items-end gap-2">
+                          <Badge 
+                            className={`text-xs px-3 py-1.5 font-medium ${
+                              activity.hostId === currentUser?.id 
+                                ? 'bg-blue-500 text-white' 
+                                : 'bg-green-500 text-white'
+                            }`}
+                          >
+                            {activity.hostId === currentUser?.id ? 'Hosting' : 'Joined'}
+                          </Badge>
+                          <MessageCircle 
+                            size={18} 
+                            className="text-gray-400 hover:text-purple-600 cursor-pointer"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/chat/${activity.id}`);
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              {/* Past Activities Section */}
+              {pastActivities.length > 0 && (
+                <div className="mt-6">
+                  <h2 className="text-lg font-semibold text-gray-900 mb-4">Recent Activities</h2>
+                  <div className="space-y-3">
+                    {pastActivities.slice(0, 3).map((activity) => (
+                      <Card 
+                        key={activity.id}
+                        className="bg-gray-50 border border-gray-200"
+                      >
+                        <CardContent className="p-3">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
+                              <span className="text-sm">{getSportIcon(activity.sportType)}</span>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-medium text-gray-900 text-sm">{activity.title}</h4>
+                              <p className="text-xs text-gray-500">
+                                {format(new Date(activity.dateTime), 'MMM d, yyyy')}
+                              </p>
+                            </div>
+                            <Badge 
+                              className={`text-xs px-2 py-1 ${
+                                activity.hostId === currentUser?.id 
+                                  ? 'bg-blue-100 text-blue-800' 
+                                  : 'bg-green-100 text-green-800'
+                              }`}
+                            >
+                              {activity.hostId === currentUser?.id ? 'Hosted' : 'Joined'}
                             </Badge>
                           </div>
-                        </div>
-
-                        <div className="space-y-2 text-sm text-white/80">
-                          <div className="flex items-center gap-2">
-                            <Calendar size={14} />
-                            <span>{formatDateTime(activity.dateTime)}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Clock size={14} />
-                            <span>{formatDuration(activity.duration)}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <MapPin size={14} />
-                            <span>{activity.location.address}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Users size={14} />
-                            <span>
-                              {activity.participants?.length || 0}/{activity.maxParticipants} participants
-                            </span>
-                          </div>
-                        </div>
-
-                        <div className="mt-3 pt-3 border-t border-white/20">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs text-white/60">
-                              Hosted by {activity.host?.name || activity.hostName || 'Unknown'}
-                            </span>
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              className="bg-orange-500 text-white border-orange-500 hover:bg-orange-600 hover:border-orange-600"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigate(`/room/${activity.id}`);
-                              }}
-                            >
-                              View Details
-                            </Button>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
-        )}
+              )}
+            </>
+          )}
+        </div>
       </div>
     </Layout>
   );
